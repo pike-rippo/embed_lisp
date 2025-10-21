@@ -1,0 +1,165 @@
+use std::{cell::RefCell, collections::HashMap, rc::Rc};
+
+use crate::{
+    environment::{Env, EnvRc},
+    err,
+    error::{Error, Result},
+    expression::Exp,
+    lambda::LambdaExp,
+    ok, special_forms,
+};
+
+pub type SpecialFormFn = fn(&[Exp], &EnvRc, &Evaluator) -> Result<Exp>;
+
+pub struct Evaluator {
+    special_forms: RefCell<HashMap<String, SpecialFormFn>>,
+}
+
+impl Evaluator {
+    pub fn new() -> Self {
+        let eval = Self {
+            special_forms: RefCell::new(HashMap::new()),
+        };
+
+        special_forms::register_all_special_form(&eval);
+
+        eval
+    }
+
+    pub fn register_special_form(&self, k: &str, f: SpecialFormFn) {
+        self.special_forms.borrow_mut().insert(k.to_string(), f);
+    }
+
+    pub fn eval(&self, exp: &Exp, env: &EnvRc) -> Result<Exp> {
+        match exp {
+            Exp::Nil => Ok(exp.clone()),
+            Exp::Number(_) => Ok(exp.clone()),
+            Exp::Bool(_) => Ok(exp.clone()),
+            Exp::String(_) => Ok(exp.clone()),
+            Exp::Native(_) => Ok(exp.clone()),
+            Exp::Symbol(k) => env
+                .lookup(k)
+                .ok_or(Error::Reason(format!("unexpected symbol '{}'", k))),
+            Exp::Function(_) => Err(Error::from("unexpected form: Function")),
+            Exp::Lambda(_) => err!("unexpected form: lambda"),
+            Exp::Macro(_) => err!("unexpected form: macro"),
+            Exp::List(list) => {
+                let Some(first_form) = list.first() else {
+                    ok!(Exp::Nil);
+                };
+                let args = &list[1..];
+                if let Exp::Symbol(k) = first_form {
+                    if let Some(f) = self.special_forms.borrow().get(k) {
+                        return f(args, env, self);
+                    }
+                }
+
+                let first_eval = self.eval(first_form, env)?;
+                self.apply(first_eval, &args, env)
+            }
+        }
+    }
+
+    pub fn apply(&self, exp: Exp, args: &[Exp], env: &EnvRc) -> Result<Exp> {
+        match exp {
+            Exp::Function(f) => f(&self.eval_form(args, env)?, env, self),
+            Exp::Lambda(lambda) => self.apply_lambda(lambda, args, env),
+            Exp::Macro(lambda) => {
+                let expanded = self.expand_macro(lambda, args, env)?;
+                self.eval(&expanded, env)
+            }
+            _ => err!("first form must be function, lambda or macro"),
+        }
+    }
+
+    pub fn eval_form(&self, args: &[Exp], env: &EnvRc) -> Result<Vec<Exp>> {
+        args.iter().map(|x| self.eval(x, env)).collect()
+    }
+
+    fn apply_lambda(&self, lambda: LambdaExp, args: &[Exp], env: &EnvRc) -> Result<Exp> {
+        let keys = parse_list_of_symbol_strings(&lambda.params_exp)?;
+        if keys.len() != args.len() {
+            err!(format!(
+                "expected {} arguments, got {}",
+                keys.len(),
+                args.len()
+            ))
+        }
+        let values = self.eval_form(args, env)?;
+        let child = Env::extend(Rc::clone(env), &keys, &values);
+        self.eval(&lambda.body_exp, &child)
+    }
+
+    pub fn expand_macro(&self, lambda: LambdaExp, args: &[Exp], env: &EnvRc) -> Result<Exp> {
+        let keys = parse_list_of_symbol_strings(&lambda.params_exp)?;
+        if keys.len() != args.len() {
+            err!(format!(
+                "expected {} arguments, got {}",
+                keys.len(),
+                args.len()
+            ))
+        }
+        let child = Env::extend(Rc::clone(env), &keys, &args);
+        let expanded = self.eval_quasiquote(&lambda.body_exp, &child)?;
+        let expanded_ref = match expanded {
+            Exp::List(ref v) if v.len() == 1 => &v[0],
+            _ => &expanded,
+        };
+        Ok(expanded_ref.clone())
+    }
+
+    pub fn eval_quasiquote(&self, exp: &Exp, env: &EnvRc) -> Result<Exp> {
+        let Exp::List(list) = exp else {
+            return Ok(exp.clone());
+        };
+        let mut result = Vec::new();
+        for item in list {
+            match item {
+                Exp::Symbol(s) if s == "quasiquote" => continue,
+                Exp::List(inner) if !inner.is_empty() => match &inner[0] {
+                    Exp::Symbol(s) if s == "unquote" => {
+                        if inner.len() != 2 {
+                            err!("unquote expects one argument")
+                        }
+                        let evaluated = self.eval(&inner[1], env)?;
+                        result.push(evaluated);
+                    }
+                    Exp::Symbol(s) if s == "unquote-splicing" => {
+                        if inner.len() != 2 {
+                            err!("unquote-splicing expects one argument")
+                        }
+                        let evaluated = self.eval(&inner[1], env)?;
+                        if let Exp::List(splice_items) = evaluated {
+                            result.extend(splice_items);
+                        } else {
+                            err!("unquote-splicing requires list result")
+                        }
+                    }
+                    _ => {
+                        let quoted = self.eval_quasiquote(item, env)?;
+                        result.push(quoted);
+                    }
+                },
+                _ => {
+                    let quoted = self.eval_quasiquote(item, env)?;
+                    result.push(quoted);
+                }
+            }
+        }
+
+        ok!(result)
+    }
+}
+
+pub fn parse_list_of_symbol_strings(form: &Rc<Exp>) -> Result<Vec<String>> {
+    match form.as_ref() {
+        Exp::List(list) => list
+            .iter()
+            .map(|x| match x {
+                Exp::Symbol(s) => Ok(s.clone()),
+                _ => err!("expected symbol in the argument list"),
+            })
+            .collect(),
+        _ => err!("expected args form to be a list"),
+    }
+}
