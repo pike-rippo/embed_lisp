@@ -1,15 +1,17 @@
-use std::{fmt, pin::Pin, rc::Rc, sync::Arc};
+use std::fmt::format;
 
+#[cfg(feature = "async")]
 use tokio::{sync::Mutex, task::JoinHandle};
 
 use crate::{
     error::Result,
     evaluator::Evaluator,
-    future::FutureExp,
     lambda::LambdaExp,
-    native::NativeObject,
+    native::{self, NativeObject},
     typedef::{Shared, SharedEnv},
 };
+#[cfg(feature = "async")]
+use crate::{future::FutureExp, task::TaskExp};
 
 pub type BuiltinFunction = fn(&[Exp], &SharedEnv, &Evaluator) -> Result<Exp>;
 
@@ -30,6 +32,8 @@ pub enum Exp {
     Native(Shared<dyn NativeObject + Send + Sync>),
     #[cfg(feature = "async")]
     Future(FutureExp),
+    #[cfg(feature = "async")]
+    Task(TaskExp),
 }
 
 impl PartialEq for Exp {
@@ -60,8 +64,8 @@ impl std::fmt::Debug for Exp {
     }
 }
 
-impl fmt::Display for Exp {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+impl std::fmt::Display for Exp {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let str = match self {
             Self::Nil => "Nil".to_string(),
             Self::Number(n) => n.to_string(),
@@ -74,6 +78,7 @@ impl fmt::Display for Exp {
                         "quote" => format!("'{}", xs.join(" ")),
                         "unquote" => format!(",{}", xs.join(" ")),
                         "quasiquote" => format!("`{}", xs.join(" ")),
+                        "unquote-splicing" => format!(",@{}", xs.join(" ")),
                         _ => {
                             if xs.is_empty() {
                                 format!("({})", s)
@@ -97,10 +102,12 @@ impl fmt::Display for Exp {
             }
             Self::Native(native) => format!("Native {{ {} }}", native.get_type_name()),
             #[cfg(feature = "async")]
-            Self::Future(future) => if future.is_ready() {
-                "Future { Ready }"
+            Self::Future(_) => "Future {}".to_string(),
+            #[cfg(feature = "async")]
+            Self::Task(future) => if future.is_ready() {
+                "Task { Ready }"
             } else {
-                "Future { Pending }"
+                "Task { Pending }"
             }
             .to_string(),
         };
@@ -134,6 +141,25 @@ impl Exp {
                 }
             }
             _ => self.clone(),
+        }
+    }
+
+    pub fn type_of(&self) -> String {
+        match self {
+            Exp::Nil => "Nil".to_string(),
+            Exp::Number(_) => "Number".to_string(),
+            Exp::Bool(_) => "Bool".to_string(),
+            Exp::String(_) => "String".to_string(),
+            Exp::List(_) => "List".to_string(),
+            Exp::Symbol(_) => "Symbol".to_string(),
+            Exp::Function(_) => "Function".to_string(),
+            Exp::Lambda(_) => "Lambda".to_string(),
+            Exp::Macro(_) => "Macro".to_string(),
+            Exp::Native(native) => format!("Native {{ {} }}", native.get_type_name()),
+            #[cfg(feature = "async")]
+            Exp::Future(_) => "Future".to_string(),
+            #[cfg(feature = "async")]
+            Exp::Task(_) => "Task".to_string(),
         }
     }
 }

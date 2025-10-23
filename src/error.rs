@@ -16,11 +16,37 @@ macro_rules! err {
     };
 }
 
+#[macro_export]
+macro_rules! write_error {
+    () => {
+        Err(crate::error::Error::Reason(format!(
+            "failed to acquire write lock {}:{}:{}",
+            file!(),
+            line!(),
+            column!(),
+        )))
+    };
+}
+
+#[macro_export]
+macro_rules! read_error {
+    () => {
+        Err(crate::error::Error::Reason(format!(
+            "failed to acquire read lock {}:{}:{}",
+            file!(),
+            line!(),
+            column!(),
+        )))
+    };
+}
+
 #[derive(Error, Debug, Clone)]
 pub enum Error {
     #[error("error: {0}")]
     Reason(String),
 }
+
+impl Error {}
 
 impl From<String> for Error {
     fn from(value: String) -> Self {

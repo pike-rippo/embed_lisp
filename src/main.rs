@@ -17,11 +17,15 @@ mod native;
 mod parser;
 mod replacer;
 mod special_forms;
+mod task;
 mod typedef;
 
 #[cfg(feature = "async")]
 pub static GLOBAL_RUNTIME: LazyLock<Runtime> =
     LazyLock::new(|| Runtime::new().expect("failed to create tokio runtime"));
+
+// eval
+// read
 
 fn main() {
     let parser = Parser::new();
@@ -34,37 +38,17 @@ fn main() {
     let env = Env::new_with_builtin(builtin);
     let eval = Evaluator::new();
     let inputs = [
-        //
-        // r#"(define f (open "test.txt" "a+"))"#,
-        // r#"(define content (call f "read"))"#,
-        // "(call f \"write\" start-time)",
-        // "(for (i (range 1 10)) (if (= (% i 2) 0) (print i) (print i)))",
-        // "(define x (sleep))",
-        // "(await (sleep))",
-        // "(await x)",
-        // "x",
-        // "(dump-env)",
-        // "(async (for (i (range 0 10)) i))"
-        // r#"
-        // (define slow-add (lambda (a b)
-        //     (begin
-        //         (sleep)
-        //         (+ a b))))
-        // "#,
-        // "(trace-eval)",
+        "(define map (create-hash-map))",
+        r#"(call map "insert" "a" "apple")"#,
+        r#"(call map "insert" "b" "banana")"#,
+        r#"(call map "insert" "c" "city")"#,
+        r#"(await (spawn (async (call map "insert" "d" "derive"))))"#,
+        r#"(call map "insert" "e" "each")"#,
+        r#"(map.insert "e" "each")"#,
         r#"
-        (define-macro slow-add (a b)
-            `(begin
-                (await (sleep))
-                (+ ,a ,b)))
+        (for (key (call map "keys"))
+            (print (call map "get" key)))
         "#,
-        "(define f1 (async (slow-add 1 2)))",
-        "(define f2 (async (slow-add 10 20)))",
-        // "(define f1 (slow-add 1 2))",
-        // "(define f2 (slow-add 10 20))",
-        r#"(print "calc started")"#,
-        "(await f1)",
-        "(await f2)",
     ];
     let exps = match parser.parse(inputs.join("")) {
         Ok(exps) => exps,

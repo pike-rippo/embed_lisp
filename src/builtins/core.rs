@@ -5,14 +5,14 @@ use crate::{
     error::{Error, Result},
     evaluator::Evaluator,
     expression::Exp,
-    future::FutureExp,
     typedef::SharedEnv,
 };
 
-/// 'call', 'range', 'sleep'
+/// 'call', 'range'
 pub fn register(env: &SharedEnv) {
     env.define("call", Exp::Function(call_impl));
     env.define("range", Exp::Function(range_impl));
+    env.define("type-of", Exp::Function(type_of_impl));
 
     #[cfg(feature = "async")]
     {
@@ -54,24 +54,21 @@ fn range_impl(args: &[Exp], _: &SharedEnv, _: &Evaluator) -> Result<Exp> {
     }
 }
 
+fn type_of_impl(args: &[Exp], _: &SharedEnv, _: &Evaluator) -> Result<Exp> {
+    if args.len() != 1 {
+        err!("type-of expected one argument");
+    }
+    Ok(Exp::String(args[0].type_of()))
+}
+
 #[cfg(feature = "async")]
 fn sleep_impl(_: &[Exp], _: &SharedEnv, _: &Evaluator) -> Result<Exp> {
     use crate::GLOBAL_RUNTIME;
-    // let handle = if tokio::runtime::Handle::try_current().is_ok() {
-    //     tokio::runtime::Handle::current().spawn(async move {
-    //         tokio::time::sleep(Duration::from_secs(10)).await;
-    //         Ok(Exp::Bool(true))
-    //     })
-    // } else {
-    //     GLOBAL_RUNTIME.spawn(async move {
-    //         tokio::time::sleep(Duration::from_secs(10)).await;
-    //         Ok(Exp::Bool(true))
-    //     })
-    // };
+    use crate::task::TaskExp;
 
     let handle = GLOBAL_RUNTIME.spawn(async move {
         tokio::time::sleep(Duration::from_secs(10)).await;
         Ok(Exp::Bool(true))
     });
-    Ok(Exp::Future(FutureExp::new(handle)))
+    Ok(Exp::Task(TaskExp::new(handle)))
 }

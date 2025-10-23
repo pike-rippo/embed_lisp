@@ -1,76 +1,48 @@
 #[cfg(feature = "async")]
-use tokio::sync::Mutex;
 use tokio::task::JoinHandle;
 
+#[cfg(feature = "async")]
 use crate::{
-    error::{Error, Result},
+    GLOBAL_RUNTIME,
+    error::Result,
+    evaluator::Evaluator,
     expression::Exp,
-    typedef::Shared,
+    typedef::{Shared, SharedEnv},
 };
 
 #[cfg(feature = "async")]
-#[derive(Clone)]
 pub struct FutureExp {
-    handle: Shared<Mutex<Option<JoinHandle<Result<Exp>>>>>,
+    exp: Box<Exp>,
+    env: SharedEnv,
+    eval: Evaluator,
+}
+
+#[cfg(feature = "async")]
+impl Clone for FutureExp {
+    fn clone(&self) -> Self {
+        Self {
+            exp: self.exp.clone(),
+            env: self.env.deep_copy(),
+            eval: self.eval.deep_copy(),
+        }
+    }
 }
 
 #[cfg(feature = "async")]
 impl FutureExp {
-    pub fn new(handle: JoinHandle<Result<Exp>>) -> Self {
+    pub fn new(exp: &Exp, env: &SharedEnv, eval: &Evaluator) -> Self {
         Self {
-            handle: Shared::new(Mutex::new(Some(handle))),
+            exp: Box::new(exp.clone()),
+            env: env.deep_copy(),
+            eval: eval.deep_copy(),
         }
     }
 
-    pub fn is_ready(&self) -> bool {
-        if tokio::runtime::Handle::try_current().is_ok() {
-            tokio::task::block_in_place(|| {
-                let Some(handle) = self.handle.blocking_lock().take() else {
-                    return false;
-                };
-                let r = handle.is_finished();
-                self.handle.blocking_lock().replace(handle);
-                r
-            })
-        } else {
-            let Some(handle) = self.handle.blocking_lock().take() else {
-                return false;
-            };
-            let r = handle.is_finished();
-            self.handle.blocking_lock().replace(handle);
-            r
-        }
-    }
-
-    pub fn get(&self) -> Result<Exp> {
-        Err(Error::from("Pending"))
-    }
-
-    pub fn sync_await(&self) -> Result<Exp> {
-        use crate::{GLOBAL_RUNTIME, err};
-
-        let Some(handle) = self.handle.blocking_lock().take() else {
-            err!("no handle")
-        };
-
-        let result = GLOBAL_RUNTIME.block_on(handle);
-
-        match result {
-            Ok(r) => r,
-            Err(e) => {
-                println!("{}", e);
-                err!("join error")
-            }
-        }
-    }
-
-    pub async fn async_await(&self) -> Result<Exp> {
-        self.handle
-            .lock()
-            .await
-            .take()
-            .ok_or_else(|| Error::from("no handle"))?
-            .await
-            .map_err(|_| Error::from("join error"))?
+    pub fn spawn(&self) -> JoinHandle<Result<Exp>> {
+        let copy_exp = self.exp.clone();
+        let copy_env = self.env.deep_copy();
+        let copy_eval = self.eval.deep_copy();
+        // GLOBAL_RUNTIME.spawn(async move { copy_eval.eval(copy_exp, &copy_env) })
+        GLOBAL_RUNTIME.spawn(async move { copy_eval.eval(&copy_exp, &copy_env) })
     }
 }

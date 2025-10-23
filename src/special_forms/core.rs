@@ -1,15 +1,12 @@
-use std::rc::Rc;
-
 use crate::{
     environment::Env,
     err,
-    error::{Error, Result},
+    error::Result,
     evaluator::Evaluator,
     expression::Exp,
     lambda::LambdaExp,
     typedef::{Shared, SharedEnv},
 };
-#[cfg(feature = "async")]
 /// 'define', 'assign', 'lambda', 'begin', 'quote', 'for'
 pub fn register(eval: &Evaluator) {
     eval.register_special_form("define", define_impl);
@@ -23,6 +20,7 @@ pub fn register(eval: &Evaluator) {
     #[cfg(feature = "async")]
     {
         eval.register_special_form("async", async_impl);
+        eval.register_special_form("spawn", spawn_impl);
         eval.register_special_form("await", await_impl);
     }
 }
@@ -111,7 +109,6 @@ fn for_impl(args: &[Exp], env: &SharedEnv, eval: &Evaluator) -> Result<Exp> {
         _ => err!("for expects first argument must be binding list"),
     };
 
-    //listならevalしてもいいかも
     let Exp::Symbol(k) = &binding_pair[0] else {
         err!("binding list must start with a symbol")
     };
@@ -120,8 +117,8 @@ fn for_impl(args: &[Exp], env: &SharedEnv, eval: &Evaluator) -> Result<Exp> {
         err!("binding list must end with a list")
     };
     let mut result = Exp::Nil;
+    let new_env = Env::new_child(Shared::clone(&env));
     for value in values {
-        let new_env = Env::new_child(Shared::clone(&env));
         new_env.define(&k, value.clone());
         result = eval.eval(&args[1], &new_env)?;
     }
@@ -130,18 +127,38 @@ fn for_impl(args: &[Exp], env: &SharedEnv, eval: &Evaluator) -> Result<Exp> {
 
 #[cfg(feature = "async")]
 fn async_impl(args: &[Exp], env: &SharedEnv, eval: &Evaluator) -> Result<Exp> {
-    use crate::{GLOBAL_RUNTIME, future::FutureExp};
+    use crate::future::FutureExp;
 
     if args.len() != 1 {
         err!("async can only have one form")
     }
 
-    let arg = args[0].clone();
-    let copy_env = env.deep_copy();
-    let copy_eval = eval.deep_copy();
-    let handle = GLOBAL_RUNTIME.spawn(async move { copy_eval.eval(&arg, &copy_env) });
+    Ok(Exp::Future(FutureExp::new(&args[0], &env, &eval)))
+}
 
-    Ok(Exp::Future(FutureExp::new(handle)))
+#[cfg(feature = "async")]
+fn spawn_impl(args: &[Exp], env: &SharedEnv, eval: &Evaluator) -> Result<Exp> {
+    use crate::task::TaskExp;
+
+    if args.len() != 1 {
+        err!("spawn can only have one form")
+    }
+
+    // let Exp::Future(future) = &args[0] else {
+    //     err!("spawn can only have one future")
+    // };
+
+    // Ok(Exp::Task(TaskExp::new(future.spawn())))
+
+    let handle = match &args[0] {
+        Exp::Future(future) => future.spawn(),
+        other => match eval.eval(other, env)? {
+            Exp::Future(future) => future.spawn(),
+            _ => err!("spawn can only have one future"),
+        },
+    };
+
+    Ok(Exp::Task(TaskExp::new(handle)))
 }
 
 #[cfg(feature = "async")]
@@ -150,35 +167,64 @@ fn await_impl(args: &[Exp], env: &SharedEnv, eval: &Evaluator) -> Result<Exp> {
         err!("await can only have one form")
     }
 
-    if let Exp::Symbol(k) = &args[0] {
-        let value = env
-            .lookup(&k)
-            .ok_or(Error::Reason(format!("unexpected symbol '{}'", k)))?;
+    match &args[0] {
+        Exp::Symbol(k) => {
+            use crate::error::Error;
 
-        if let Exp::Future(f) = value {
-            // let result = f.sync_await()?;
-            let result = if tokio::runtime::Handle::try_current().is_ok() {
-                tokio::runtime::Handle::current().block_on(f.async_await())
+            let value = env
+                .lookup(&k)
+                .ok_or(Error::Reason(format!("unexpected symbol '{}'", k)))?;
+
+            if let Exp::Task(f) = value {
+                let result = if tokio::runtime::Handle::try_current().is_ok() {
+                    tokio::runtime::Handle::current().block_on(f.async_await())
+                } else {
+                    f.sync_await()
+                }?;
+                env.assign(k, result.clone());
+                Ok(result)
             } else {
-                f.sync_await()
-            }?;
-            env.assign(k, result.clone());
-            return Ok(result);
-        } else {
-            // err!(format!("{} is not a FutureExp", k));
-            return Ok(value);
+                Ok(value)
+            }
         }
+        other => match eval.eval(other, env)? {
+            Exp::Task(task) => {
+                if tokio::runtime::Handle::try_current().is_ok() {
+                    tokio::task::block_in_place(|| task.sync_await())
+                } else {
+                    task.sync_await()
+                }
+            }
+            exp => Ok(exp),
+        },
     }
 
-    let val = eval.eval(&args[0], env)?;
-    if let Exp::Future(f) = val {
-        if tokio::runtime::Handle::try_current().is_ok() {
-            tokio::task::block_in_place(|| f.sync_await())
-        } else {
-            f.sync_await()
-        }
-    } else {
-        // err!("await: argument is not a FutureExp")
-        return Ok(val);
-    }
+    // if let Exp::Symbol(k) = &args[0] {
+    //     let value = env
+    //         .lookup(&k)
+    //         .ok_or(Error::Reason(format!("unexpected symbol '{}'", k)))?;
+
+    //     if let Exp::Task(f) = value {
+    //         let result = if tokio::runtime::Handle::try_current().is_ok() {
+    //             tokio::runtime::Handle::current().block_on(f.async_await())
+    //         } else {
+    //             f.sync_await()
+    //         }?;
+    //         env.assign(k, result.clone());
+    //         return Ok(result);
+    //     } else {
+    //         return Ok(value);
+    //     }
+    // }
+
+    // let val = eval.eval(&args[0], env)?;
+    // if let Exp::Task(f) = val {
+    //     if tokio::runtime::Handle::try_current().is_ok() {
+    //         tokio::task::block_in_place(|| f.sync_await())
+    //     } else {
+    //         f.sync_await()
+    //     }
+    // } else {
+    //     return Ok(val);
+    // }
 }
