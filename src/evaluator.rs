@@ -71,7 +71,6 @@ impl Evaluator {
             Exp::Bool(_) => Ok(exp.clone()),
             Exp::String(_) => Ok(exp.clone()),
             Exp::Native(_) => Ok(exp.clone()),
-            // Exp::Future(future) => future.get(),
             Exp::Function(_) => Err(Error::from("unexpected form: Function")),
             Exp::Lambda(_) => err!("unexpected form: lambda"),
             Exp::Macro(_) => err!("unexpected form: macro"),

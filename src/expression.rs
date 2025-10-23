@@ -162,6 +162,10 @@ impl Exp {
             Exp::Task(_) => "Task".to_string(),
         }
     }
+
+    pub fn as_string_exp(&self) -> Exp {
+        Exp::String(format!("{}", self))
+    }
 }
 
 impl From<bool> for Exp {

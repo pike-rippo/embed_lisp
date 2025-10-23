@@ -21,6 +21,7 @@ impl Parser {
                 ("`", None, None),
                 (",", None, Some('@')),
                 (",@", None, None),
+                (".", Some('.'), Some('.')),
                 // ("#'", None, None),
                 // ("...", None, None),
             ])
@@ -89,6 +90,14 @@ fn read_seq(input: &[String]) -> Result<(Exp, &[String])> {
 
         if next == ")" {
             return Ok((Exp::List(res), rest));
+        }
+
+        // obg.methodで、methodにリストは付け付けない
+        if next == "." {
+            res.insert(res.len() - 1, Exp::Symbol("call".to_string()));
+            let method = rest.get(0).ok_or(Error::from("unexpected '.'"))?;
+            res.push(Exp::String(method.to_string()));
+            xs = rest.get(1..).ok_or(Error::from("unexpected '.'"))?;
         }
 
         let (exp, new_xs) = tokenize(&xs)?;

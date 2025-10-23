@@ -8,7 +8,7 @@ use crate::{
     typedef::SharedEnv,
 };
 
-/// 'call', 'range'
+/// 'call', 'range', 'type-of'
 pub fn register(env: &SharedEnv) {
     env.define("call", Exp::Function(call_impl));
     env.define("range", Exp::Function(range_impl));
