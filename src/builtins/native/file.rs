@@ -1,15 +1,17 @@
-use std::rc::Rc;
-
 use crate::{
-    environment::EnvRc, err, error::Result, evaluator::Evaluator, expression::Exp,
+    err,
+    error::Result,
+    evaluator::Evaluator,
+    expression::Exp,
     native::FileObject,
+    typedef::{Shared, SharedEnv},
 };
 
-pub fn register(env: &EnvRc) {
+pub fn register(env: &SharedEnv) {
     env.define("open", Exp::Function(open_impl));
 }
 
-fn open_impl(args: &[Exp], _: &EnvRc, _: &Evaluator) -> Result<Exp> {
+fn open_impl(args: &[Exp], _: &SharedEnv, _: &Evaluator) -> Result<Exp> {
     if args.is_empty() {
         err!("open expects one argument")
     }
@@ -50,5 +52,5 @@ fn open_impl(args: &[Exp], _: &EnvRc, _: &Evaluator) -> Result<Exp> {
     let file = options
         .open(path)
         .map_err(|e| format!("failed to open {}: {}", path, e))?;
-    Ok(Exp::Native(Rc::new(FileObject::new(file))))
+    Ok(Exp::Native(Shared::new(FileObject::new(file))))
 }

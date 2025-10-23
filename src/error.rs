@@ -16,7 +16,7 @@ macro_rules! err {
     };
 }
 
-#[derive(Error, Debug)]
+#[derive(Error, Debug, Clone)]
 pub enum Error {
     #[error("error: {0}")]
     Reason(String),

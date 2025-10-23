@@ -1,4 +1,4 @@
-use crate::environment::EnvRc;
+use crate::typedef::SharedEnv;
 
 mod compare;
 mod core;
@@ -8,7 +8,7 @@ mod list;
 mod math;
 mod native;
 
-pub fn register_all(env: &EnvRc) {
+pub fn register_all(env: &SharedEnv) {
     compare::register(env);
     core::register(env);
     debug::register(env);

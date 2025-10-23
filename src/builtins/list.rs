@@ -1,18 +1,18 @@
 use std::vec;
 
 use crate::{
-    environment::EnvRc,
     err,
     error::{Error, Result},
     evaluator::Evaluator,
     expression::Exp,
     ok,
+    typedef::SharedEnv,
 };
 
-// Exp::Function(|args: &[Exp], _: &EnvRc, _: &Evaluator| -> Result<Exp> {})
+// Exp::Function(|args: &[Exp], _: &SharedEnv, _: &Evaluator| -> Result<Exp> {})
 
 /// 'car', 'cdr', 'cons', 'list', 'append', 'length', 'apply'
-pub fn register(env: &EnvRc) {
+pub fn register(env: &SharedEnv) {
     env.define("car", Exp::Function(car_impl));
     env.define("cdr", Exp::Function(cdr_impl));
     env.define("cons", Exp::Function(cons_impl));
@@ -22,7 +22,7 @@ pub fn register(env: &EnvRc) {
     env.define("apply", Exp::Function(apply_impl));
 }
 
-fn car_impl(args: &[Exp], _: &EnvRc, _: &Evaluator) -> Result<Exp> {
+fn car_impl(args: &[Exp], _: &SharedEnv, _: &Evaluator) -> Result<Exp> {
     if args.len() != 1 {
         err!("car expected exactly one argument")
     }
@@ -32,7 +32,7 @@ fn car_impl(args: &[Exp], _: &EnvRc, _: &Evaluator) -> Result<Exp> {
     }
 }
 
-fn cdr_impl(args: &[Exp], _: &EnvRc, _: &Evaluator) -> Result<Exp> {
+fn cdr_impl(args: &[Exp], _: &SharedEnv, _: &Evaluator) -> Result<Exp> {
     if args.len() != 1 {
         err!("cdr expected exactly one argument")
     }
@@ -47,7 +47,7 @@ fn cdr_impl(args: &[Exp], _: &EnvRc, _: &Evaluator) -> Result<Exp> {
     }
 }
 
-fn cons_impl(args: &[Exp], _: &EnvRc, _: &Evaluator) -> Result<Exp> {
+fn cons_impl(args: &[Exp], _: &SharedEnv, _: &Evaluator) -> Result<Exp> {
     if args.len() != 2 {
         err!("cons expected exactly two arguments")
     }
@@ -64,7 +64,7 @@ fn cons_impl(args: &[Exp], _: &EnvRc, _: &Evaluator) -> Result<Exp> {
     }
 }
 
-fn list_impl(args: &[Exp], _: &EnvRc, _: &Evaluator) -> Result<Exp> {
+fn list_impl(args: &[Exp], _: &SharedEnv, _: &Evaluator) -> Result<Exp> {
     let mut new_list = Vec::with_capacity(args.len());
     for exp in args {
         new_list.push(exp.unwrap_quote());
@@ -73,7 +73,7 @@ fn list_impl(args: &[Exp], _: &EnvRc, _: &Evaluator) -> Result<Exp> {
     ok!(new_list)
 }
 
-fn append_impl(args: &[Exp], _: &EnvRc, _: &Evaluator) -> Result<Exp> {
+fn append_impl(args: &[Exp], _: &SharedEnv, _: &Evaluator) -> Result<Exp> {
     if args.len() != 2 {
         err!("append expected exactly two arguments")
     }
@@ -95,7 +95,7 @@ fn append_impl(args: &[Exp], _: &EnvRc, _: &Evaluator) -> Result<Exp> {
     }
 }
 
-fn length_impl(args: &[Exp], _: &EnvRc, _: &Evaluator) -> Result<Exp> {
+fn length_impl(args: &[Exp], _: &SharedEnv, _: &Evaluator) -> Result<Exp> {
     if args.len() != 1 {
         err!("length takes one argument")
     }
@@ -107,7 +107,7 @@ fn length_impl(args: &[Exp], _: &EnvRc, _: &Evaluator) -> Result<Exp> {
     }
 }
 
-fn apply_impl(args: &[Exp], env: &EnvRc, eval: &Evaluator) -> Result<Exp> {
+fn apply_impl(args: &[Exp], env: &SharedEnv, eval: &Evaluator) -> Result<Exp> {
     if args.len() < 2 {
         err!("apply takes at least 2 arguments")
     }

@@ -1,12 +1,13 @@
 use std::rc::Rc;
 
 use crate::{
-    environment::{Env, EnvRc},
+    environment::Env,
     err,
     error::Result,
     evaluator::Evaluator,
     expression::Exp,
     special_forms::core::begin_impl,
+    typedef::{Shared, SharedEnv},
 };
 
 pub fn register(eval: &Evaluator) {
@@ -14,7 +15,7 @@ pub fn register(eval: &Evaluator) {
     eval.register_special_form("let*", |args, env, eval| let_impl(args, env, eval, true));
 }
 
-fn let_impl(args: &[Exp], env: &EnvRc, eval: &Evaluator, star: bool) -> Result<Exp> {
+fn let_impl(args: &[Exp], env: &SharedEnv, eval: &Evaluator, star: bool) -> Result<Exp> {
     if args.is_empty() {
         err!("let requires bindings and least one body expression")
     }
@@ -23,7 +24,7 @@ fn let_impl(args: &[Exp], env: &EnvRc, eval: &Evaluator, star: bool) -> Result<E
         err!("let bindings should be a list")
     };
 
-    let child_env = Env::new_child(Rc::clone(&env));
+    let child_env = Env::new_child(Shared::clone(&env));
 
     for pair in binding {
         match pair {

@@ -1,11 +1,17 @@
-use std::{fmt, rc::Rc};
+use std::{fmt, pin::Pin, rc::Rc, sync::Arc};
+
+use tokio::{sync::Mutex, task::JoinHandle};
 
 use crate::{
-    environment::EnvRc, error::Result, evaluator::Evaluator, lambda::LambdaExp,
+    error::Result,
+    evaluator::Evaluator,
+    future::FutureExp,
+    lambda::LambdaExp,
     native::NativeObject,
+    typedef::{Shared, SharedEnv},
 };
 
-pub type BuiltinFunction = fn(&[Exp], &EnvRc, &Evaluator) -> Result<Exp>;
+pub type BuiltinFunction = fn(&[Exp], &SharedEnv, &Evaluator) -> Result<Exp>;
 
 #[derive(Clone)]
 pub enum Exp {
@@ -18,7 +24,12 @@ pub enum Exp {
     Function(BuiltinFunction),
     Lambda(LambdaExp),
     Macro(LambdaExp),
-    Native(Rc<dyn NativeObject>),
+    #[cfg(not(feature = "async"))]
+    Native(Shared<dyn NativeObject>),
+    #[cfg(feature = "async")]
+    Native(Shared<dyn NativeObject + Send + Sync>),
+    #[cfg(feature = "async")]
+    Future(FutureExp),
 }
 
 impl PartialEq for Exp {
@@ -77,14 +88,21 @@ impl fmt::Display for Exp {
                 }
             }
             Self::Symbol(s) => s.clone(),
-            Self::Function(_) => "Function{}".to_string(),
+            Self::Function(_) => "Function".to_string(),
             Self::Lambda(lambda) => {
-                format!("Lambda{{{} -> {}}}", lambda.params_exp, lambda.body_exp)
+                format!("Lambda {{ {} -> {} }}", lambda.params_exp, lambda.body_exp)
             }
             Self::Macro(lambda) => {
-                format!("Macro{{{} -> {}}}", lambda.params_exp, lambda.body_exp)
+                format!("Macro {{ {} -> {} }}", lambda.params_exp, lambda.body_exp)
             }
-            Self::Native(native) => format!("Native{{{}}}", native.get_type_name()),
+            Self::Native(native) => format!("Native {{ {} }}", native.get_type_name()),
+            #[cfg(feature = "async")]
+            Self::Future(future) => if future.is_ready() {
+                "Future { Ready }"
+            } else {
+                "Future { Pending }"
+            }
+            .to_string(),
         };
         write!(f, "{}", str)
     }

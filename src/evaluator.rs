@@ -1,24 +1,27 @@
-use std::{cell::RefCell, collections::HashMap, rc::Rc};
+use std::{cell::RefCell, collections::HashMap, rc::Rc, sync::atomic::AtomicBool};
 
 use crate::{
-    environment::{Env, EnvRc},
+    environment::Env,
     err,
     error::{Error, Result},
     expression::Exp,
     lambda::LambdaExp,
     ok, special_forms,
+    typedef::{Shared, SharedEnv, SharedMut},
 };
 
-pub type SpecialFormFn = fn(&[Exp], &EnvRc, &Evaluator) -> Result<Exp>;
+pub type SpecialFormFn = fn(&[Exp], &SharedEnv, &Evaluator) -> Result<Exp>;
 
 pub struct Evaluator {
-    special_forms: RefCell<HashMap<String, SpecialFormFn>>,
+    special_forms: SharedMut<HashMap<String, SpecialFormFn>>,
+    trace: AtomicBool,
 }
 
 impl Evaluator {
     pub fn new() -> Self {
         let eval = Self {
-            special_forms: RefCell::new(HashMap::new()),
+            special_forms: SharedMut::new(HashMap::new()),
+            trace: AtomicBool::new(false),
         };
 
         special_forms::register_all_special_form(&eval);
@@ -26,30 +29,82 @@ impl Evaluator {
         eval
     }
 
-    pub fn register_special_form(&self, k: &str, f: SpecialFormFn) {
-        self.special_forms.borrow_mut().insert(k.to_string(), f);
+    #[cfg(feature = "async")]
+    pub fn deep_copy(&self) -> Self {
+        Self {
+            special_forms: SharedMut::new(self.special_forms.blocking_lock().clone()),
+            trace: AtomicBool::new(self.trace.load(std::sync::atomic::Ordering::Relaxed)),
+        }
     }
 
-    pub fn eval(&self, exp: &Exp, env: &EnvRc) -> Result<Exp> {
+    pub fn register_special_form(&self, k: &str, f: SpecialFormFn) {
+        #[cfg(not(feature = "async"))]
+        self.special_forms.borrow_mut().insert(k.to_string(), f);
+
+        #[cfg(feature = "async")]
+        self.special_forms.blocking_lock().insert(k.to_string(), f);
+    }
+
+    pub fn set_trace(&self, value: bool) {
+        self.trace
+            .store(value, std::sync::atomic::Ordering::Release);
+    }
+
+    pub fn eval(&self, exp: &Exp, env: &SharedEnv) -> Result<Exp> {
+        if self.trace.load(std::sync::atomic::Ordering::Relaxed) {
+            println!("evaluating {}", exp);
+        }
+
         match exp {
             Exp::Nil => Ok(exp.clone()),
             Exp::Number(_) => Ok(exp.clone()),
             Exp::Bool(_) => Ok(exp.clone()),
             Exp::String(_) => Ok(exp.clone()),
             Exp::Native(_) => Ok(exp.clone()),
-            Exp::Symbol(k) => env
-                .lookup(k)
-                .ok_or(Error::Reason(format!("unexpected symbol '{}'", k))),
+            // Exp::Future(future) => future.get(),
             Exp::Function(_) => Err(Error::from("unexpected form: Function")),
             Exp::Lambda(_) => err!("unexpected form: lambda"),
             Exp::Macro(_) => err!("unexpected form: macro"),
+            Exp::Symbol(k) => env
+                .lookup(k)
+                .ok_or(Error::Reason(format!("unexpected symbol '{}'", k))),
             Exp::List(list) => {
                 let Some(first_form) = list.first() else {
                     ok!(Exp::Nil);
                 };
                 let args = &list[1..];
                 if let Exp::Symbol(k) = first_form {
-                    if let Some(f) = self.special_forms.borrow().get(k) {
+                    // #[cfg(not(feature = "async"))]
+                    // if let Some(f) = self.special_forms.borrow().get(k) {
+                    //     return f(args, env, self);
+                    // }
+
+                    // #[cfg(feature = "async")]
+                    // if let Some(f) = self.special_forms.blocking_lock().get(k) {
+                    //     return f(args, env, self);
+                    // }
+
+                    let f_opt = {
+                        #[cfg(not(feature = "async"))]
+                        {
+                            self.special_forms.borrow().get(k).cloed()
+                        }
+
+                        #[cfg(feature = "async")]
+                        if tokio::runtime::Handle::try_current().is_ok() {
+                            tokio::task::block_in_place(|| {
+                                self.special_forms.blocking_lock().get(k).cloned()
+                            })
+                        } else {
+                            self.special_forms.blocking_lock().get(k).cloned()
+                        }
+
+                        // {
+                        //     self.special_forms.blocking_lock().get(k).cloned()
+                        // }
+                    };
+
+                    if let Some(f) = f_opt {
                         return f(args, env, self);
                     }
                 }
@@ -57,10 +112,12 @@ impl Evaluator {
                 let first_eval = self.eval(first_form, env)?;
                 self.apply(first_eval, &args, env)
             }
+            #[cfg(feature = "async")]
+            Exp::Future(future) => future.get(),
         }
     }
 
-    pub fn apply(&self, exp: Exp, args: &[Exp], env: &EnvRc) -> Result<Exp> {
+    pub fn apply(&self, exp: Exp, args: &[Exp], env: &SharedEnv) -> Result<Exp> {
         match exp {
             Exp::Function(f) => f(&self.eval_form(args, env)?, env, self),
             Exp::Lambda(lambda) => self.apply_lambda(lambda, args, env),
@@ -72,11 +129,11 @@ impl Evaluator {
         }
     }
 
-    pub fn eval_form(&self, args: &[Exp], env: &EnvRc) -> Result<Vec<Exp>> {
+    pub fn eval_form(&self, args: &[Exp], env: &SharedEnv) -> Result<Vec<Exp>> {
         args.iter().map(|x| self.eval(x, env)).collect()
     }
 
-    fn apply_lambda(&self, lambda: LambdaExp, args: &[Exp], env: &EnvRc) -> Result<Exp> {
+    fn apply_lambda(&self, lambda: LambdaExp, args: &[Exp], env: &SharedEnv) -> Result<Exp> {
         let keys = parse_list_of_symbol_strings(&lambda.params_exp)?;
         if keys.len() != args.len() {
             err!(format!(
@@ -86,11 +143,11 @@ impl Evaluator {
             ))
         }
         let values = self.eval_form(args, env)?;
-        let child = Env::extend(Rc::clone(env), &keys, &values);
+        let child = Env::extend(env.clone(), &keys, &values);
         self.eval(&lambda.body_exp, &child)
     }
 
-    pub fn expand_macro(&self, lambda: LambdaExp, args: &[Exp], env: &EnvRc) -> Result<Exp> {
+    pub fn expand_macro(&self, lambda: LambdaExp, args: &[Exp], env: &SharedEnv) -> Result<Exp> {
         let keys = parse_list_of_symbol_strings(&lambda.params_exp)?;
         if keys.len() != args.len() {
             err!(format!(
@@ -99,7 +156,7 @@ impl Evaluator {
                 args.len()
             ))
         }
-        let child = Env::extend(Rc::clone(env), &keys, &args);
+        let child = Env::extend(env.clone(), &keys, &args);
         let expanded = self.eval_quasiquote(&lambda.body_exp, &child)?;
         let expanded_ref = match expanded {
             Exp::List(ref v) if v.len() == 1 => &v[0],
@@ -108,7 +165,7 @@ impl Evaluator {
         Ok(expanded_ref.clone())
     }
 
-    pub fn eval_quasiquote(&self, exp: &Exp, env: &EnvRc) -> Result<Exp> {
+    pub fn eval_quasiquote(&self, exp: &Exp, env: &SharedEnv) -> Result<Exp> {
         let Exp::List(list) = exp else {
             return Ok(exp.clone());
         };
@@ -151,7 +208,7 @@ impl Evaluator {
     }
 }
 
-pub fn parse_list_of_symbol_strings(form: &Rc<Exp>) -> Result<Vec<String>> {
+pub fn parse_list_of_symbol_strings(form: &Shared<Exp>) -> Result<Vec<String>> {
     match form.as_ref() {
         Exp::List(list) => list
             .iter()

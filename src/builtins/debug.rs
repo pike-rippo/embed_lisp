@@ -1,11 +1,12 @@
-use crate::{environment::EnvRc, err, error::Result, evaluator::Evaluator, expression::Exp, ok};
+use crate::{err, error::Result, evaluator::Evaluator, expression::Exp, ok, typedef::SharedEnv};
 
-pub fn register(env: &EnvRc) {
+pub fn register(env: &SharedEnv) {
     env.define("expand-macro", Exp::Function(expand_macro_impl));
     env.define("dump-env", Exp::Function(dump_env_impl));
+    env.define("trace-eval", Exp::Function(trace_eval_impl));
 }
 
-fn expand_macro_impl(args: &[Exp], env: &EnvRc, eval: &Evaluator) -> Result<Exp> {
+fn expand_macro_impl(args: &[Exp], env: &SharedEnv, eval: &Evaluator) -> Result<Exp> {
     if args.len() != 1 {
         err!("expand-macro expects exactly one argument")
     }
@@ -27,7 +28,12 @@ fn expand_macro_impl(args: &[Exp], env: &EnvRc, eval: &Evaluator) -> Result<Exp>
     Ok(expanded)
 }
 
-fn dump_env_impl(_: &[Exp], env: &EnvRc, _: &Evaluator) -> Result<Exp> {
+fn dump_env_impl(_: &[Exp], env: &SharedEnv, _: &Evaluator) -> Result<Exp> {
     env.dump();
+    ok!(true)
+}
+
+fn trace_eval_impl(_: &[Exp], _: &SharedEnv, eval: &Evaluator) -> Result<Exp> {
+    eval.set_trace(true);
     ok!(true)
 }

@@ -1,18 +1,26 @@
+use std::time::Duration;
+
 use crate::{
-    environment::EnvRc,
     err,
     error::{Error, Result},
     evaluator::Evaluator,
     expression::Exp,
+    future::FutureExp,
+    typedef::SharedEnv,
 };
 
-/// 'call'
-pub fn register(env: &EnvRc) {
+/// 'call', 'range', 'sleep'
+pub fn register(env: &SharedEnv) {
     env.define("call", Exp::Function(call_impl));
     env.define("range", Exp::Function(range_impl));
+
+    #[cfg(feature = "async")]
+    {
+        env.define("sleep", Exp::Function(sleep_impl));
+    }
 }
 
-fn call_impl(args: &[Exp], _: &EnvRc, _: &Evaluator) -> Result<Exp> {
+fn call_impl(args: &[Exp], _: &SharedEnv, _: &Evaluator) -> Result<Exp> {
     if args.len() < 2 {
         err!("call expects (native 'method-name' ...args)")
     }
@@ -25,7 +33,7 @@ fn call_impl(args: &[Exp], _: &EnvRc, _: &Evaluator) -> Result<Exp> {
     native.call_method(&method_name, &args[2..])
 }
 
-fn range_impl(args: &[Exp], _: &EnvRc, _: &Evaluator) -> Result<Exp> {
+fn range_impl(args: &[Exp], _: &SharedEnv, _: &Evaluator) -> Result<Exp> {
     if args.len() != 2 {
         Err(Error::from("expected exactly two numbers"))
     } else {
@@ -44,4 +52,26 @@ fn range_impl(args: &[Exp], _: &EnvRc, _: &Evaluator) -> Result<Exp> {
                 .collect(),
         ))
     }
+}
+
+#[cfg(feature = "async")]
+fn sleep_impl(_: &[Exp], _: &SharedEnv, _: &Evaluator) -> Result<Exp> {
+    use crate::GLOBAL_RUNTIME;
+    // let handle = if tokio::runtime::Handle::try_current().is_ok() {
+    //     tokio::runtime::Handle::current().spawn(async move {
+    //         tokio::time::sleep(Duration::from_secs(10)).await;
+    //         Ok(Exp::Bool(true))
+    //     })
+    // } else {
+    //     GLOBAL_RUNTIME.spawn(async move {
+    //         tokio::time::sleep(Duration::from_secs(10)).await;
+    //         Ok(Exp::Bool(true))
+    //     })
+    // };
+
+    let handle = GLOBAL_RUNTIME.spawn(async move {
+        tokio::time::sleep(Duration::from_secs(10)).await;
+        Ok(Exp::Bool(true))
+    });
+    Ok(Exp::Future(FutureExp::new(handle)))
 }

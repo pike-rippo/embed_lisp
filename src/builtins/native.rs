@@ -1,7 +1,7 @@
-use crate::environment::EnvRc;
+use crate::typedef::SharedEnv;
 
 mod file;
 
-pub fn register(env: &EnvRc) {
+pub fn register(env: &SharedEnv) {
     file::register(env);
 }

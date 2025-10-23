@@ -1,12 +1,12 @@
 use crate::{
-    environment::EnvRc,
     error::{Error, Result},
     evaluator::Evaluator,
     expression::Exp,
+    typedef::SharedEnv,
 };
 
 /// '+', '+', '-', '/'
-pub fn register(env: &EnvRc) {
+pub fn register(env: &SharedEnv) {
     env.define("+", Exp::Function(add_impl));
     env.define("*", Exp::Function(mul_impl));
     env.define("-", Exp::Function(sub_impl));
@@ -25,21 +25,21 @@ fn parse_single_float(exp: &Exp) -> Result<f64> {
     }
 }
 
-fn add_impl(args: &[Exp], _: &EnvRc, _: &Evaluator) -> Result<Exp> {
+fn add_impl(args: &[Exp], _: &SharedEnv, _: &Evaluator) -> Result<Exp> {
     let sum = parse_list_of_floats(args)?
         .iter()
         .fold(0.0, |sum, n| sum + n);
     Ok(Exp::Number(sum))
 }
 
-fn mul_impl(args: &[Exp], _: &EnvRc, _: &Evaluator) -> Result<Exp> {
+fn mul_impl(args: &[Exp], _: &SharedEnv, _: &Evaluator) -> Result<Exp> {
     let mul = parse_list_of_floats(args)?
         .iter()
         .fold(1.0, |mul, n| mul * n);
     Ok(Exp::Number(mul))
 }
 
-fn sub_impl(args: &[Exp], _: &EnvRc, _: &Evaluator) -> Result<Exp> {
+fn sub_impl(args: &[Exp], _: &SharedEnv, _: &Evaluator) -> Result<Exp> {
     let floats = parse_list_of_floats(args)?;
     let first = *floats
         .first()
@@ -48,7 +48,7 @@ fn sub_impl(args: &[Exp], _: &EnvRc, _: &Evaluator) -> Result<Exp> {
     Ok(Exp::Number(first - sum_of_rest))
 }
 
-fn div_impl(args: &[Exp], _: &EnvRc, _: &Evaluator) -> Result<Exp> {
+fn div_impl(args: &[Exp], _: &SharedEnv, _: &Evaluator) -> Result<Exp> {
     let floats = parse_list_of_floats(args)?;
     let first = *floats
         .first()
@@ -57,7 +57,7 @@ fn div_impl(args: &[Exp], _: &EnvRc, _: &Evaluator) -> Result<Exp> {
     Ok(Exp::Number(first / mul_of_rest))
 }
 
-fn mod_impl(args: &[Exp], _: &EnvRc, _: &Evaluator) -> Result<Exp> {
+fn mod_impl(args: &[Exp], _: &SharedEnv, _: &Evaluator) -> Result<Exp> {
     if args.len() != 2 {
         Err(Error::from("expected exactly two numbers"))
     } else {

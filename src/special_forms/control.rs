@@ -1,6 +1,6 @@
 use crate::{
-    environment::EnvRc, err, error::Result, evaluator::Evaluator, expression::Exp,
-    special_forms::core::begin_impl,
+    err, error::Result, evaluator::Evaluator, expression::Exp, special_forms::core::begin_impl,
+    typedef::SharedEnv,
 };
 
 /// 'if', 'cond', 'and', 'or'
@@ -11,7 +11,7 @@ pub fn register(eval: &Evaluator) {
     eval.register_special_form("or", |args, env, eval| or_impl(args, env, eval));
 }
 
-fn if_impl(args: &[Exp], env: &EnvRc, eval: &Evaluator) -> Result<Exp> {
+fn if_impl(args: &[Exp], env: &SharedEnv, eval: &Evaluator) -> Result<Exp> {
     let Some(test_form) = args.first() else {
         err!("expected test form")
     };
@@ -23,7 +23,7 @@ fn if_impl(args: &[Exp], env: &EnvRc, eval: &Evaluator) -> Result<Exp> {
     eval.eval(res_form, &env)
 }
 
-fn cond_impl(args: &[Exp], env: &EnvRc, eval: &Evaluator) -> Result<Exp> {
+fn cond_impl(args: &[Exp], env: &SharedEnv, eval: &Evaluator) -> Result<Exp> {
     for clause in args {
         let Exp::List(items) = clause else {
             err!("cond clause must be a list")
@@ -41,7 +41,7 @@ fn cond_impl(args: &[Exp], env: &EnvRc, eval: &Evaluator) -> Result<Exp> {
     Ok(Exp::Nil)
 }
 
-fn and_impl(args: &[Exp], env: &EnvRc, eval: &Evaluator) -> Result<Exp> {
+fn and_impl(args: &[Exp], env: &SharedEnv, eval: &Evaluator) -> Result<Exp> {
     for arg in args {
         let res = eval.eval(arg, env)?;
         if !res.is_truthy() {
@@ -51,7 +51,7 @@ fn and_impl(args: &[Exp], env: &EnvRc, eval: &Evaluator) -> Result<Exp> {
     Ok(Exp::Bool(true))
 }
 
-fn or_impl(args: &[Exp], env: &EnvRc, eval: &Evaluator) -> Result<Exp> {
+fn or_impl(args: &[Exp], env: &SharedEnv, eval: &Evaluator) -> Result<Exp> {
     for arg in args {
         let res = eval.eval(arg, env)?;
         if !res.is_truthy() {

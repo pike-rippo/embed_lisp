@@ -1,15 +1,13 @@
-use std::rc::Rc;
-
-use crate::expression::Exp;
+use crate::{expression::Exp, typedef::Shared};
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct LambdaExp {
-    pub params_exp: Rc<Exp>,
-    pub body_exp: Rc<Exp>,
+    pub params_exp: Shared<Exp>,
+    pub body_exp: Shared<Exp>,
 }
 
 impl LambdaExp {
-    pub fn new(params_exp: Rc<Exp>, body_exp: Rc<Exp>) -> Self {
+    pub fn new(params_exp: Shared<Exp>, body_exp: Shared<Exp>) -> Self {
         LambdaExp {
             params_exp,
             body_exp,
