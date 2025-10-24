@@ -18,8 +18,12 @@ fn define_macro_impl(args: &[Exp], env: &SharedEnv, _: &Evaluator) -> Result<Exp
 
     let name = match &args[0] {
         Exp::Symbol(s) => s,
-        _ => err!("first argument to def-macro must be a symbol"),
+        _ => err!("first argument to define-macro must be a symbol"),
     };
+
+    if !matches!(args[1], Exp::List(_)) {
+        err!("define-macro expected args is list");
+    }
 
     let lambda = LambdaExp::new(Shared::new(args[1].clone()), Shared::new(args[2].clone()));
     Ok(env.define(name, Exp::Macro(lambda)))

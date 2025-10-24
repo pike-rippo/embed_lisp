@@ -3,7 +3,9 @@ use std::{collections::HashMap, sync::RwLock};
 use crate::{
     builtins::register_all,
     expression::Exp,
+    read_expect,
     typedef::{Shared, SharedEnv},
+    write_expect,
 };
 
 #[derive(Debug)]
@@ -45,7 +47,7 @@ impl Env {
     pub fn extend(parent: SharedEnv, keys: &[String], values: &[Exp]) -> SharedEnv {
         let child = Env::new_child(parent);
         {
-            let mut current = child.current.write().unwrap();
+            let mut current = child.current.write().expect(write_expect!());
             for (key, value) in keys.iter().zip(values.iter()) {
                 current.insert(key.clone(), value.clone());
             }
@@ -55,8 +57,10 @@ impl Env {
 
     #[cfg(feature = "async")]
     pub fn deep_copy(&self) -> SharedEnv {
+        use crate::read_expect;
+
         Shared::new(Self {
-            current: RwLock::new(self.current.read().unwrap().clone()),
+            current: RwLock::new(self.current.read().expect(read_expect!()).clone()),
             outer: self.outer.as_ref().map(|outer_env| outer_env.deep_copy()),
             level: self.level,
         })
@@ -65,14 +69,14 @@ impl Env {
     pub fn define(&self, k: &str, v: Exp) -> Exp {
         self.current
             .write()
-            .unwrap()
+            .expect(write_expect!())
             .insert(k.to_string(), v.clone());
 
         v
     }
 
     pub fn assign(&self, k: &str, v: Exp) -> Exp {
-        if self.current.read().unwrap().contains_key(k) {
+        if self.current.read().expect(read_expect!()).contains_key(k) {
             return self.define(k, v);
         }
 
@@ -84,7 +88,7 @@ impl Env {
     }
 
     pub fn find_env(&self, k: &str) -> Option<SharedEnv> {
-        if self.current.read().unwrap().contains_key(k) {
+        if self.current.read().expect(read_expect!()).contains_key(k) {
             return None;
         }
 
@@ -98,8 +102,8 @@ impl Env {
     }
 
     pub fn lookup(&self, k: &str) -> Option<Exp> {
-        if self.current.read().unwrap().contains_key(k) {
-            return self.current.read().unwrap().get(k).cloned();
+        if self.current.read().expect(read_expect!()).contains_key(k) {
+            return self.current.read().expect(read_expect!()).get(k).cloned();
         }
 
         if let Some(e) = self.lookup_outer(k) {
@@ -113,8 +117,8 @@ impl Env {
         match self.outer {
             None => None,
             Some(ref outer) => {
-                if outer.current.read().unwrap().contains_key(k) {
-                    return outer.current.read().unwrap().get(k).cloned();
+                if outer.current.read().expect(read_expect!()).contains_key(k) {
+                    return outer.current.read().expect(read_expect!()).get(k).cloned();
                 }
                 // if outer.current.blocking_lock().contains_key(k) {
                 //     return outer.current.blocking_lock().get(k).cloned();
@@ -125,7 +129,10 @@ impl Env {
         }
     }
 
-    pub fn dump(&self) {
+    pub fn dump(&self, show_builtin: bool) {
+        if !show_builtin && self.level == 0 {
+            return;
+        }
         let level = if self.level != 0 {
             &self.level.to_string()[..]
         } else {
@@ -133,12 +140,12 @@ impl Env {
         };
         println!("Level: {}", level);
 
-        for (k, v) in self.current.read().unwrap().iter() {
+        for (k, v) in self.current.read().expect(read_expect!()).iter() {
             println!("    '{}' = {}", k, v);
         }
 
         if let Some(outer) = &self.outer {
-            outer.dump();
+            outer.dump(show_builtin);
         }
     }
 }

@@ -49,6 +49,23 @@ impl FileObject {
             .or(Err(Error::from("file read error")))?;
         ok!(true)
     }
+
+    fn handle_writeln(&self, args: &[Exp]) -> Result<Exp> {
+        if args.len() != 1 {
+            err!("write expects one argument")
+        }
+
+        let Exp::String(s) = &args[0] else {
+            err!("write expects a string")
+        };
+
+        self.inner
+            .write()
+            .or(write_error!())?
+            .write_all(format!("{}\n", s).as_bytes())
+            .or(Err(Error::from("file read error")))?;
+        ok!(true)
+    }
 }
 
 impl NativeObject for FileObject {
@@ -60,6 +77,7 @@ impl NativeObject for FileObject {
         match method_name {
             "read" => self.handle_read(args),
             "write" => self.handle_write(args),
+            "writeln" => self.handle_writeln(args),
             _ => err!(format!("unknown method '{}'", method_name)),
         }
     }

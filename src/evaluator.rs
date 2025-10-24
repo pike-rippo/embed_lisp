@@ -2,17 +2,22 @@ use std::{
     cell::RefCell,
     collections::HashMap,
     rc::Rc,
-    sync::{RwLock, atomic::AtomicBool},
+    sync::{
+        Arc, RwLock,
+        atomic::{AtomicBool, AtomicUsize},
+    },
 };
 
 use crate::{
+    GENESYM_COUNTER,
     environment::Env,
     err,
     error::{Error, Result},
     expression::Exp,
     lambda::LambdaExp,
-    ok, special_forms,
+    ok, read_expect, special_forms,
     typedef::{Shared, SharedEnv},
+    write_error, write_expect,
 };
 
 pub type SpecialFormFn = fn(&[Exp], &SharedEnv, &Evaluator) -> Result<Exp>;
@@ -20,6 +25,7 @@ pub type SpecialFormFn = fn(&[Exp], &SharedEnv, &Evaluator) -> Result<Exp>;
 pub struct Evaluator {
     special_forms: RwLock<HashMap<String, SpecialFormFn>>,
     trace: AtomicBool,
+    gensym_counter: Arc<&'static AtomicUsize>,
 }
 
 #[cfg(feature = "async")]
@@ -34,6 +40,7 @@ impl Evaluator {
         let eval = Self {
             special_forms: RwLock::new(HashMap::new()),
             trace: AtomicBool::new(false),
+            gensym_counter: Arc::new(&GENESYM_COUNTER),
         };
 
         special_forms::register_all_special_form(&eval);
@@ -46,13 +53,22 @@ impl Evaluator {
         use std::sync::RwLock;
 
         Self {
-            special_forms: RwLock::new(self.special_forms.read().unwrap().clone()),
+            special_forms: RwLock::new(self.special_forms.read().expect(read_expect!()).clone()),
             trace: AtomicBool::new(self.trace.load(std::sync::atomic::Ordering::Relaxed)),
+            gensym_counter: Arc::new(&GENESYM_COUNTER),
         }
     }
 
     pub fn register_special_form(&self, k: &str, f: SpecialFormFn) {
-        self.special_forms.write().unwrap().insert(k.to_string(), f);
+        self.special_forms
+            .write()
+            .expect(write_expect!())
+            .insert(k.to_string(), f);
+    }
+
+    pub fn get_gensym_id(&self) -> usize {
+        self.gensym_counter
+            .fetch_add(1, std::sync::atomic::Ordering::Release)
     }
 
     pub fn set_trace(&self, value: bool) {
@@ -83,7 +99,7 @@ impl Evaluator {
                 };
                 let args = &list[1..];
                 if let Exp::Symbol(k) = first_form {
-                    if let Some(f) = self.special_forms.read().unwrap().get(k) {
+                    if let Some(f) = self.special_forms.read().expect(read_expect!()).get(k) {
                         return f(args, env, self);
                     }
                 }
@@ -140,7 +156,8 @@ impl Evaluator {
             ))
         }
         let child = Env::extend(env.clone(), &keys, &args);
-        self.eval_quasiquote(&lambda.body_exp, &child)
+        self.eval(&lambda.body_exp, &child)
+        // self.eval_quasiquote(&lambda.body_exp, &child)
     }
 
     // pub fn eval_quasiquote(&self, exp: &Exp, env: &SharedEnv) -> Result<Exp> {

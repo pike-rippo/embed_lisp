@@ -16,6 +16,7 @@ pub fn register(eval: &Evaluator) {
     eval.register_special_form("quote", quote_impl);
     eval.register_special_form("quasiquote", quasiquote_impl);
     eval.register_special_form("for", for_impl);
+    eval.register_special_form("gensym", gensym_impl);
 
     #[cfg(feature = "async")]
     {
@@ -123,6 +124,10 @@ fn for_impl(args: &[Exp], env: &SharedEnv, eval: &Evaluator) -> Result<Exp> {
         result = eval.eval(&args[1], &new_env)?;
     }
     Ok(result)
+}
+
+fn gensym_impl(args: &[Exp], _: &SharedEnv, eval: &Evaluator) -> Result<Exp> {
+    Ok(Exp::Symbol(format!("__GEN_SYM__{}", eval.get_gensym_id())))
 }
 
 #[cfg(feature = "async")]

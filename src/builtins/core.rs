@@ -5,14 +5,17 @@ use crate::{
     error::{Error, Result},
     evaluator::Evaluator,
     expression::Exp,
+    parser::Parser,
     typedef::SharedEnv,
 };
 
-/// 'call', 'range', 'type-of'
+/// 'call', 'range', 'type-of', 'parse', 'eval'
 pub fn register(env: &SharedEnv) {
     env.define("call", Exp::Function(call_impl));
     env.define("range", Exp::Function(range_impl));
     env.define("type-of", Exp::Function(type_of_impl));
+    env.define("parse", Exp::Function(parse_impl));
+    env.define("eval", Exp::Function(eval_impl));
 
     #[cfg(feature = "async")]
     {
@@ -61,8 +64,40 @@ fn type_of_impl(args: &[Exp], _: &SharedEnv, _: &Evaluator) -> Result<Exp> {
     Ok(Exp::String(args[0].type_of()))
 }
 
+fn parse_impl(args: &[Exp], _: &SharedEnv, _: &Evaluator) -> Result<Exp> {
+    if args.len() != 1 {
+        err!("parse expected one argument");
+    }
+    let Exp::String(input) = &args[0] else {
+        err!("parse expected string")
+    };
+    let Ok(exps) = Parser::new().parse(input) else {
+        err!("parse failed")
+    };
+    Ok(Exp::List(exps))
+}
+
+fn eval_impl(args: &[Exp], env: &SharedEnv, eval: &Evaluator) -> Result<Exp> {
+    if args.len() != 1 {
+        err!("eval expected one argument");
+    }
+
+    // eval.eval(&args[0], env)
+    match &args[0] {
+        Exp::List(exps) => {
+            let mut result = Exp::Nil;
+            for exp in exps {
+                result = eval.eval(exp, env)?;
+            }
+            Ok(result)
+        }
+        other => eval.eval(other, env),
+    }
+}
+
 #[cfg(feature = "async")]
 fn sleep_impl(_: &[Exp], _: &SharedEnv, _: &Evaluator) -> Result<Exp> {
+    #[cfg(feature = "async")]
     use crate::GLOBAL_RUNTIME;
     use crate::task::TaskExp;
 
