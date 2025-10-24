@@ -94,12 +94,10 @@ fn read_seq(input: &[String]) -> Result<(Exp, &[String])> {
 
         // obj.methodで、methodにリストは付け付けない
         if next == "." {
-            println!("{:?}", xs);
             res.insert(res.len() - 1, Exp::Symbol("call".to_string()));
             let method = rest.get(0).ok_or(Error::from("unexpected '.'"))?;
             res.push(Exp::String(method.to_string()));
             xs = rest.get(1..).ok_or(Error::from("unexpected '.'"))?;
-            println!("{:?}", xs);
             if xs.first().map_or(false, |e| e == ")") {
                 return Ok((Exp::List(res), &xs[1..]));
             }

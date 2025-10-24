@@ -1,11 +1,11 @@
-use std::{collections::HashMap, sync::RwLock};
+use std::collections::HashMap;
+
+use parking_lot::RwLock;
 
 use crate::{
     builtins::register_all,
     expression::Exp,
-    read_expect,
     typedef::{Shared, SharedEnv},
-    write_expect,
 };
 
 #[derive(Debug)]
@@ -47,7 +47,7 @@ impl Env {
     pub fn extend(parent: SharedEnv, keys: &[String], values: &[Exp]) -> SharedEnv {
         let child = Env::new_child(parent);
         {
-            let mut current = child.current.write().expect(write_expect!());
+            let mut current = child.current.write();
             for (key, value) in keys.iter().zip(values.iter()) {
                 current.insert(key.clone(), value.clone());
             }
@@ -57,26 +57,21 @@ impl Env {
 
     #[cfg(feature = "async")]
     pub fn deep_copy(&self) -> SharedEnv {
-        use crate::read_expect;
-
         Shared::new(Self {
-            current: RwLock::new(self.current.read().expect(read_expect!()).clone()),
+            current: RwLock::new(self.current.read().clone()),
             outer: self.outer.as_ref().map(|outer_env| outer_env.deep_copy()),
             level: self.level,
         })
     }
 
     pub fn define(&self, k: &str, v: Exp) -> Exp {
-        self.current
-            .write()
-            .expect(write_expect!())
-            .insert(k.to_string(), v.clone());
+        self.current.write().insert(k.to_string(), v.clone());
 
         v
     }
 
     pub fn assign(&self, k: &str, v: Exp) -> Exp {
-        if self.current.read().expect(read_expect!()).contains_key(k) {
+        if self.current.read().contains_key(k) {
             return self.define(k, v);
         }
 
@@ -88,7 +83,7 @@ impl Env {
     }
 
     pub fn find_env(&self, k: &str) -> Option<SharedEnv> {
-        if self.current.read().expect(read_expect!()).contains_key(k) {
+        if self.current.read().contains_key(k) {
             return None;
         }
 
@@ -102,8 +97,8 @@ impl Env {
     }
 
     pub fn lookup(&self, k: &str) -> Option<Exp> {
-        if self.current.read().expect(read_expect!()).contains_key(k) {
-            return self.current.read().expect(read_expect!()).get(k).cloned();
+        if self.current.read().contains_key(k) {
+            return self.current.read().get(k).cloned();
         }
 
         if let Some(e) = self.lookup_outer(k) {
@@ -117,8 +112,8 @@ impl Env {
         match self.outer {
             None => None,
             Some(ref outer) => {
-                if outer.current.read().expect(read_expect!()).contains_key(k) {
-                    return outer.current.read().expect(read_expect!()).get(k).cloned();
+                if outer.current.read().contains_key(k) {
+                    return outer.current.read().get(k).cloned();
                 }
                 // if outer.current.blocking_lock().contains_key(k) {
                 //     return outer.current.blocking_lock().get(k).cloned();
@@ -140,7 +135,7 @@ impl Env {
         };
         println!("Level: {}", level);
 
-        for (k, v) in self.current.read().expect(read_expect!()).iter() {
+        for (k, v) in self.current.read().iter() {
             println!("    '{}' = {}", k, v);
         }
 

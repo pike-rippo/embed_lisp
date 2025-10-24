@@ -29,6 +29,7 @@ name = "embed_lisp"
 version = "0.1.0"
 dependencies = [
  "colorize",
+ "parking_lot",
  "thiserror",
  "tokio",
 ]

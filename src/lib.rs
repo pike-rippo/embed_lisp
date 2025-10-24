@@ -2,7 +2,6 @@
 use std::sync::LazyLock;
 use std::sync::atomic::AtomicUsize;
 
-use tokio::io::Empty;
 #[cfg(feature = "async")]
 use tokio::runtime::Runtime;
 
@@ -14,6 +13,7 @@ mod expression;
 mod future;
 mod lambda;
 mod native;
+mod native_registry;
 mod parser;
 mod replacer;
 mod special_forms;

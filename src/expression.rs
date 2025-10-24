@@ -1,13 +1,10 @@
-use std::fmt::format;
-
-#[cfg(feature = "async")]
-use tokio::{sync::Mutex, task::JoinHandle};
+use std::hash::{Hash, Hasher};
 
 use crate::{
     error::Result,
     evaluator::Evaluator,
     lambda::LambdaExp,
-    native::{self, NativeObject},
+    native::NativeObject,
     typedef::{Shared, SharedEnv},
 };
 #[cfg(feature = "async")]
@@ -46,12 +43,28 @@ impl PartialEq for Exp {
             (String(a), String(b)) => a == b,
             (Symbol(a), Symbol(b)) => a == b,
             (List(a), List(b)) => a == b,
-            (Native(_), Native(_)) => false,
             _ => false,
         }
     }
     fn ne(&self, other: &Self) -> bool {
         !self.eq(other)
+    }
+}
+
+impl Eq for Exp {}
+
+impl Hash for Exp {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        use Exp::*;
+        match self {
+            Nil => 0.hash(state),
+            Number(n) => n.to_bits().hash(state),
+            Bool(b) => b.hash(state),
+            String(s) => s.hash(state),
+            Symbol(s) => s.hash(state),
+            List(l) => l.hash(state),
+            _ => {}
+        }
     }
 }
 
@@ -183,6 +196,31 @@ impl Exp {
 
     pub fn as_string_exp(&self) -> Exp {
         Exp::String(format!("{}", self))
+    }
+
+    pub fn as_string(&self) -> String {
+        format!("{}", self)
+    }
+
+    pub fn check_key_allowed(&self) -> Result<()> {
+        #[cfg(not(feature = "async"))]
+        match self {
+            Exp::Native(_) | Exp::Function(_) | Exp::Lambda(_) | Exp::Macro(_) => {
+                Err("invalid key type for HashMap".into())
+            }
+            _ => Ok(()),
+        }
+
+        #[cfg(feature = "async")]
+        match self {
+            Exp::Native(_)
+            | Exp::Function(_)
+            | Exp::Lambda(_)
+            | Exp::Macro(_)
+            | Exp::Future(_)
+            | Exp::Task(_) => Err("invalid key type for HashMap".into()),
+            _ => Ok(()),
+        }
     }
 }
 

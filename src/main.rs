@@ -4,7 +4,6 @@ use colorize::Colorize;
 use embed_lisp::Interpreter;
 
 fn read_line(depth: i32, input: &mut String) {
-    // print!("{}", format!("[depth {}] > ", depth));
     if depth == 0 {
         print!("{}", format!("[depth {}]  > ", depth));
     } else {
@@ -63,8 +62,8 @@ fn main() {
 
         if balanced {
             match interpreter.eval_str(&buffer) {
-                Err(e) => println!("{}", e.bright_red()),
-                Ok(val) => println!("=> {}", val.bright_green()),
+                Err(e) => println!("{}\n", e.bright_red()),
+                Ok(val) => println!("=> {}\n", val.bright_green()),
             }
             buffer.clear();
         }

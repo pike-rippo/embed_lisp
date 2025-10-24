@@ -1,19 +1,68 @@
 use std::{
     fs::File,
     io::{Read, Write},
-    sync::RwLock,
 };
 
+use parking_lot::RwLock;
+
 use crate::{
-    err,
+    Evaluator, err,
     error::{Error, Result},
     expression::Exp,
     native::NativeObject,
-    ok, write_error,
+    native_registry::NativeCreator,
+    ok,
+    typedef::Shared,
 };
 
 pub struct FileObject {
     inner: RwLock<File>,
+}
+
+pub fn register(eval: &Evaluator) {
+    eval.register_native_object_creator("File", |args: &[Exp]| {
+        if args.is_empty() {
+            err!("open expects one argument")
+        }
+        let Exp::String(path) = &args[0] else {
+            err!("open expects a string")
+        };
+
+        let mut options = std::fs::OpenOptions::new();
+        if let Some(maybe_mode) = args.get(1) {
+            let Exp::String(mode) = maybe_mode else {
+                err!("second argument must be a string")
+            };
+            match &mode[..] {
+                "r" => {
+                    options.read(true);
+                }
+                "r+" => {
+                    options.read(true).write(true);
+                }
+                "w" => {
+                    options.write(true).create(true).truncate(true);
+                }
+                "w+" => {
+                    options.read(true).write(true).create(true).truncate(true);
+                }
+                "a" => {
+                    options.write(true).create(true).append(true);
+                }
+                "a+" => {
+                    options.read(true).write(true).create(true).append(true);
+                }
+                _ => err!(format!("invalid file mode: {}", mode)),
+            }
+        } else {
+            options.read(true).write(true).create(true).truncate(true);
+        }
+
+        let file = options
+            .open(path)
+            .map_err(|e| format!("failed to open {}: {}", path, e))?;
+        Ok(Exp::Native(Shared::new(FileObject::new(file))))
+    });
 }
 
 impl FileObject {
@@ -27,7 +76,6 @@ impl FileObject {
         let mut buf = String::new();
         self.inner
             .write()
-            .or(write_error!())?
             .read_to_string(&mut buf)
             .or(Err(Error::from("file read error")))?;
         Ok(Exp::String(buf))
@@ -44,7 +92,6 @@ impl FileObject {
 
         self.inner
             .write()
-            .or(write_error!())?
             .write_all(s.as_bytes())
             .or(Err(Error::from("file read error")))?;
         ok!(true)
@@ -61,7 +108,6 @@ impl FileObject {
 
         self.inner
             .write()
-            .or(write_error!())?
             .write_all(format!("{}\n", s).as_bytes())
             .or(Err(Error::from("file read error")))?;
         ok!(true)
@@ -82,91 +128,3 @@ impl NativeObject for FileObject {
         }
     }
 }
-
-// #[cfg(not(feature = "async"))]
-// impl NativeObject for FileObject {
-//     fn get_type_name(&self) -> &'static str {
-//         "File"
-//     }
-//     fn call_method(&self, name: &str, args: &[Exp]) -> Result<Exp> {
-//         match name {
-//             "read" => {
-//                 let mut buf = String::new();
-//                 self.inner
-//                     .borrow_mut()
-//                     .read_to_string(&mut buf)
-//                     .or(Err(Error::from("file read error")))?;
-//                 Ok(Exp::String(buf))
-//             }
-//             "write" => {
-//                 if args.len() != 1 {
-//                     err!("write expects one argument")
-//                 }
-//                 let Exp::String(s) = &args[0] else {
-//                     err!("write expects a string")
-//                 };
-//                 self.inner
-//                     .borrow_mut()
-//                     .write_all(s.as_bytes())
-//                     .or(Err(Error::from("file read error")))?;
-//                 ok!(true)
-//             }
-
-//             _ => err!(format!("unknown method '{}'", name)),
-//         }
-//     }
-// }
-
-// #[cfg(feature = "async")]
-// impl NativeObject for FileObject {
-//     fn get_type_name(&self) -> &'static str {
-//         "File"
-//     }
-//     fn call_method(&self, name: &str, args: &[Exp]) -> Result<Exp> {
-//         match name {
-//             "read" => {
-//                 let mut buf = String::new();
-//                 if tokio::runtime::Handle::try_current().is_ok() {
-//                     if tokio::task::block_in_place(|| {
-//                         self.inner.blocking_lock().read_to_string(&mut buf)
-//                     })
-//                     .is_err()
-//                     {
-//                         return Err(Error::from("file read error"));
-//                     }
-//                 } else {
-//                     self.inner
-//                         .blocking_lock()
-//                         .read_to_string(&mut buf)
-//                         .or(Err(Error::from("file read error")))?;
-//                 }
-//                 Ok(Exp::String(buf))
-//             }
-//             "write" => {
-//                 if args.len() != 1 {
-//                     err!("write expects one argument")
-//                 }
-//                 let Exp::String(s) = &args[0] else {
-//                     err!("write expects a string")
-//                 };
-//                 if tokio::runtime::Handle::try_current().is_ok() {
-//                     if tokio::task::block_in_place(|| {
-//                         self.inner.blocking_lock().write_all(s.as_bytes())
-//                     })
-//                     .is_err()
-//                     {
-//                         return Err(Error::from("file write error"));
-//                     }
-//                 } else {
-//                     self.inner
-//                         .blocking_lock()
-//                         .write_all(s.as_bytes())
-//                         .or(Err(Error::from("file write error")))?;
-//                 }
-//                 ok!(true)
-//             }
-
-//             _ => err!(format!("unknown method '{}'", name)),
-//         }
-//     }
-// }

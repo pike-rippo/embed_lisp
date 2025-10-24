@@ -1,12 +1,12 @@
 use std::{
-    cell::RefCell,
     collections::HashMap,
-    rc::Rc,
     sync::{
-        Arc, RwLock,
+        Arc,
         atomic::{AtomicBool, AtomicUsize},
     },
 };
+
+use parking_lot::RwLock;
 
 use crate::{
     GENESYM_COUNTER,
@@ -15,15 +15,17 @@ use crate::{
     error::{Error, Result},
     expression::Exp,
     lambda::LambdaExp,
-    ok, read_expect, special_forms,
+    native,
+    native_registry::{NativeCreator, NativeRegistry},
+    ok, special_forms,
     typedef::{Shared, SharedEnv},
-    write_error, write_expect,
 };
 
 pub type SpecialFormFn = fn(&[Exp], &SharedEnv, &Evaluator) -> Result<Exp>;
 
 pub struct Evaluator {
     special_forms: RwLock<HashMap<String, SpecialFormFn>>,
+    native_registry: NativeRegistry,
     trace: AtomicBool,
     gensym_counter: Arc<&'static AtomicUsize>,
 }
@@ -39,31 +41,37 @@ impl Evaluator {
     pub fn new() -> Self {
         let eval = Self {
             special_forms: RwLock::new(HashMap::new()),
+            native_registry: NativeRegistry::new(),
             trace: AtomicBool::new(false),
             gensym_counter: Arc::new(&GENESYM_COUNTER),
         };
 
         special_forms::register_all_special_form(&eval);
+        native::register_all_native_object_creator(&eval);
 
         eval
     }
 
     #[cfg(feature = "async")]
     pub fn deep_copy(&self) -> Self {
-        use std::sync::RwLock;
-
         Self {
-            special_forms: RwLock::new(self.special_forms.read().expect(read_expect!()).clone()),
+            special_forms: RwLock::new(self.special_forms.read().clone()),
+            native_registry: self.native_registry.clone(),
             trace: AtomicBool::new(self.trace.load(std::sync::atomic::Ordering::Relaxed)),
             gensym_counter: Arc::new(&GENESYM_COUNTER),
         }
     }
 
     pub fn register_special_form(&self, k: &str, f: SpecialFormFn) {
-        self.special_forms
-            .write()
-            .expect(write_expect!())
-            .insert(k.to_string(), f);
+        self.special_forms.write().insert(k.to_string(), f);
+    }
+
+    pub fn register_native_object_creator(&self, k: &str, creator: NativeCreator) {
+        self.native_registry.register(k, creator);
+    }
+
+    pub fn create_native_object(&self, name: &str, args: &[Exp]) -> Result<Exp> {
+        self.native_registry.create(name, args)
     }
 
     pub fn get_gensym_id(&self) -> usize {
@@ -99,7 +107,7 @@ impl Evaluator {
                 };
                 let args = &list[1..];
                 if let Exp::Symbol(k) = first_form {
-                    if let Some(f) = self.special_forms.read().expect(read_expect!()).get(k) {
+                    if let Some(f) = self.special_forms.read().get(k) {
                         return f(args, env, self);
                     }
                 }

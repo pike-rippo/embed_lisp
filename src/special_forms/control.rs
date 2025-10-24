@@ -5,10 +5,10 @@ use crate::{
 
 /// 'if', 'cond', 'and', 'or'
 pub fn register(eval: &Evaluator) {
-    eval.register_special_form("if", |args, env, eval| if_impl(args, env, eval));
-    eval.register_special_form("cond", |args, env, eval| cond_impl(args, env, eval));
-    eval.register_special_form("and", |args, env, eval| and_impl(args, env, eval));
-    eval.register_special_form("or", |args, env, eval| or_impl(args, env, eval));
+    eval.register_special_form("if", if_impl);
+    eval.register_special_form("cond", cond_impl);
+    eval.register_special_form("and", and_impl);
+    eval.register_special_form("or", or_impl);
 }
 
 fn if_impl(args: &[Exp], env: &SharedEnv, eval: &Evaluator) -> Result<Exp> {
