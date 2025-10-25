@@ -97,7 +97,17 @@ fn quasiquote_impl(args: &[Exp], env: &SharedEnv, eval: &Evaluator) -> Result<Ex
         err!("quasiquote can only have one form")
     }
 
-    eval.eval_quasiquote(&args[0], env)
+    // eval.eval_quasiquote(&args[0], env)
+    let (exp, _splicing) = eval.eval_quasiquote(&args[0], env)?;
+    Ok(exp)
+    // if splicing {
+    //     let Exp::List(items) = exp else {
+    //         unreachable!();
+    //     };
+    //     new_list.extend(items);
+    // } else {
+    //     new_list.push(exp);
+    // }
 }
 
 fn for_impl(args: &[Exp], env: &SharedEnv, eval: &Evaluator) -> Result<Exp> {

@@ -2,6 +2,7 @@ use crate::{
     error::{Error, Result},
     expression::Exp,
     replacer::Replacer,
+    typedef::Shared,
 };
 
 #[derive(Debug, Default)]
@@ -22,8 +23,8 @@ impl Parser {
                 (",", None, Some('@')),
                 (",@", None, None),
                 (".", Some('.'), Some('.')),
+                ("...", None, None),
                 // ("#'", None, None),
-                // ("...", None, None),
             ])
             .value();
 
@@ -90,10 +91,22 @@ fn read_seq(input: &[String]) -> Result<(Exp, &[String])> {
 
         if next == ")" {
             return Ok((Exp::List(res), rest));
+        } else if next == "..." {
+            let (tail, after) = tokenize(rest)?;
+            let (maybe_close, remaining) = after
+                .split_first()
+                .ok_or(Error::from("expected ')' after dotted list"))?;
+
+            return if maybe_close == ")" {
+                Ok((Exp::DottedList(res, Shared::new(tail)), remaining))
+            } else {
+                Err("expected ')' after dotted list".into())
+            };
         }
 
         // obj.methodで、methodにリストは付け付けない
         if next == "." {
+            println!(".");
             res.insert(res.len() - 1, Exp::Symbol("call".to_string()));
             let method = rest.first().ok_or(Error::from("unexpected '.'"))?;
             res.push(Exp::String(method.to_string()));

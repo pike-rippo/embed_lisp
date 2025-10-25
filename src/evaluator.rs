@@ -1,5 +1,6 @@
 use std::{
     collections::HashMap,
+    ops::Deref,
     sync::atomic::{AtomicBool, AtomicUsize},
 };
 
@@ -105,6 +106,7 @@ impl Evaluator {
             Exp::Function(_) => Err(Error::from("unexpected form: Function")),
             Exp::Lambda(_) => err!("unexpected form: lambda"),
             Exp::Macro(_) => err!("unexpected form: macro"),
+            Exp::DottedList(_, _) => err!("unexpected form: dotted list"),
             Exp::Symbol(k) => env
                 .lookup(k)
                 .ok_or(Error::Reason(format!("unexpected symbol '{}'", k))),
@@ -162,19 +164,23 @@ impl Evaluator {
     }
 
     pub fn expand_macro(&self, lambda: LambdaExp, args: &[Exp], env: &SharedEnv) -> Result<Exp> {
+        let is_dotted = lambda.params_exp.is_dotted_list();
         let keys = parse_list_of_symbol_strings(&lambda.params_exp)?;
-        if keys.len() != args.len() {
+        let child = if is_dotted {
+            Env::extend_dotted(env.clone(), &keys, args)
+        } else if keys.len() == args.len() {
+            Env::extend(env.clone(), &keys, args)
+        } else {
             err!(format!(
                 "expected {} arguments, got {}",
                 keys.len(),
                 args.len()
             ))
-        }
-        let child = Env::extend(env.clone(), &keys, args);
+        };
         self.eval(&lambda.body_exp, &child)
     }
 
-    pub fn eval_quasiquote(&self, exp: &Exp, env: &SharedEnv) -> Result<Exp> {
+    pub fn eval_quasiquote(&self, exp: &Exp, env: &SharedEnv) -> Result<(Exp, bool)> {
         match exp {
             Exp::List(list) if !list.is_empty() => {
                 match &list[0] {
@@ -186,13 +192,14 @@ impl Evaluator {
                     }
                     Exp::Symbol(s) if s == "unquote" => {
                         // unquote のみ評価
-                        self.eval(&list[1], env)
+                        Ok((self.eval(&list[1], env)?, false))
                     }
                     Exp::Symbol(s) if s == "unquote-splicing" => {
                         // splicing も同様
                         let val = self.eval(&list[1], env)?;
                         if let Exp::List(items) = val {
-                            Ok(Exp::List(items)) // ここではまだリスト化
+                            // Ok(Exp::List(items)) // ここではまだリスト化
+                            Ok((Exp::List(items), true))
                         } else {
                             err!("unquote-splicing requires list")
                         }
@@ -201,13 +208,26 @@ impl Evaluator {
                         // 再帰展開
                         let mut new_list = Vec::new();
                         for item in list {
-                            new_list.push(self.eval_quasiquote(item, env)?);
+                            let (exp, splicing) = self.eval_quasiquote(item, env)?;
+                            if splicing {
+                                let Exp::List(items) = exp else {
+                                    unreachable!();
+                                };
+                                new_list.extend(items);
+                            } else {
+                                new_list.push(exp);
+                            }
                         }
-                        Ok(Exp::List(new_list))
+                        Ok((Exp::List(new_list), false))
+                        // for item in list {
+                        //     new_list.push(self.eval_quasiquote(item, env)?);
+                        // }
+                        // Ok(Exp::List(new_list))
                     }
                 }
             }
-            _ => Ok(exp.clone()), // シンボルや数値はそのまま
+            // _ => Ok(exp.clone()), // シンボルや数値はそのまま
+            _ => Ok((exp.clone(), false)),
         }
     }
 }
@@ -221,6 +241,21 @@ pub fn parse_list_of_symbol_strings(form: &Shared<Exp>) -> Result<Vec<String>> {
                 _ => err!("expected symbol in the argument list"),
             })
             .collect(),
+        Exp::DottedList(args, res) => {
+            let Exp::Symbol(s) = res.deref() else {
+                err!("expected symbol in the argument list")
+            };
+            let mut list = args
+                .iter()
+                .map(|e| match e {
+                    Exp::Symbol(s) => Ok(s.clone()),
+                    _ => err!("expected symbol in the argument list"),
+                })
+                .collect::<Result<Vec<String>>>()?;
+
+            list.push(s.clone());
+            Ok(list)
+        }
         _ => err!("expected args form to be a list"),
     }
 }

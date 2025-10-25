@@ -19,6 +19,7 @@ pub enum Exp {
     Bool(bool),
     String(String),
     List(Vec<Exp>),
+    DottedList(Vec<Exp>, Shared<Exp>),
     Symbol(String),
     Function(BuiltinFunction),
     Lambda(LambdaExp),
@@ -102,6 +103,14 @@ impl std::fmt::Display for Exp {
                     format!("({})", xs.join(" "))
                 }
             }
+            Self::DottedList(args, tail) => format!(
+                "({} ...{})",
+                args.iter()
+                    .map(|e| format!("{}", e))
+                    .collect::<Vec<String>>()
+                    .join(" "),
+                tail
+            ),
             Self::Symbol(s) => s.clone(),
             Self::Function(_) => "Function".to_string(),
             Self::Lambda(lambda) => {
@@ -136,6 +145,10 @@ impl Exp {
 
     pub fn is_truthy(&self) -> bool {
         !matches!(self, Exp::Bool(false) | Exp::Nil)
+    }
+
+    pub fn is_dotted_list(&self) -> bool {
+        matches!(self, Self::DottedList(_, _))
     }
 
     pub fn is_quote(&self) -> bool {
@@ -177,6 +190,7 @@ impl Exp {
             Exp::Bool(_) => "Bool".to_string(),
             Exp::String(_) => "String".to_string(),
             Exp::List(_) => "List".to_string(),
+            Exp::DottedList(_, _) => "DottedList".to_string(),
             Exp::Symbol(_) => "Symbol".to_string(),
             Exp::Function(_) => "Function".to_string(),
             Exp::Lambda(_) => "Lambda".to_string(),

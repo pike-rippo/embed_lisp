@@ -55,6 +55,23 @@ impl Env {
         child
     }
 
+    pub fn extend_dotted(parent: SharedEnv, keys: &[String], values: &[Exp]) -> SharedEnv {
+        let child = Env::new_child(parent);
+        let (tail, keys) = keys.split_last().expect("extend dotted");
+        let (pairs, _, values) = zip_with_remainder_iter(keys.iter(), values.iter());
+        {
+            let mut current = child.current.write();
+            for (key, value) in pairs {
+                current.insert(key.clone(), value.clone());
+            }
+            current.insert(
+                tail.clone(),
+                Exp::List(values.cloned().collect::<Vec<Exp>>()),
+            );
+        }
+        child
+    }
+
     #[cfg(feature = "async")]
     pub fn deep_copy(&self) -> SharedEnv {
         Shared::new(Self {
@@ -141,6 +158,50 @@ impl Env {
 
         if let Some(outer) = &self.outer {
             outer.dump(show_builtin);
+        }
+    }
+}
+
+fn zip_with_remainder_iter<'a, A, B, I1, I2>(
+    mut iter1: I1,
+    mut iter2: I2,
+) -> (
+    Vec<(A, B)>,
+    Box<dyn Iterator<Item = A> + 'a>,
+    Box<dyn Iterator<Item = B> + 'a>,
+)
+where
+    A: 'a,
+    B: 'a,
+    I1: Iterator<Item = A> + 'a,
+    I2: Iterator<Item = B> + 'a,
+{
+    let mut zipped = Vec::new();
+
+    loop {
+        match (iter1.next(), iter2.next()) {
+            (Some(a), Some(b)) => zipped.push((a, b)),
+            (Some(a), None) => {
+                return (
+                    zipped,
+                    Box::new(std::iter::once(a).chain(iter1)),
+                    Box::new(std::iter::empty()),
+                );
+            }
+            (None, Some(b)) => {
+                return (
+                    zipped,
+                    Box::new(std::iter::empty()),
+                    Box::new(std::iter::once(b).chain(iter2)),
+                );
+            }
+            (None, None) => {
+                return (
+                    zipped,
+                    Box::new(std::iter::empty()),
+                    Box::new(std::iter::empty()),
+                );
+            }
         }
     }
 }
