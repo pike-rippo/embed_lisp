@@ -1,9 +1,6 @@
 use std::{
     collections::HashMap,
-    sync::{
-        Arc,
-        atomic::{AtomicBool, AtomicUsize},
-    },
+    sync::atomic::{AtomicBool, AtomicUsize},
 };
 
 use parking_lot::RwLock;
@@ -27,7 +24,7 @@ pub struct Evaluator {
     special_forms: RwLock<HashMap<String, SpecialFormFn>>,
     native_registry: NativeRegistry,
     trace: AtomicBool,
-    gensym_counter: Arc<&'static AtomicUsize>,
+    gensym_counter: &'static AtomicUsize,
 }
 
 #[cfg(feature = "async")]
@@ -37,13 +34,19 @@ impl Clone for Evaluator {
     }
 }
 
+impl Default for Evaluator {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Evaluator {
     pub fn new() -> Self {
         let eval = Self {
             special_forms: RwLock::new(HashMap::new()),
             native_registry: NativeRegistry::new(),
             trace: AtomicBool::new(false),
-            gensym_counter: Arc::new(&GENESYM_COUNTER),
+            gensym_counter: &GENESYM_COUNTER,
         };
 
         special_forms::register_all_special_form(&eval);
@@ -58,7 +61,7 @@ impl Evaluator {
             special_forms: RwLock::new(self.special_forms.read().clone()),
             native_registry: self.native_registry.clone(),
             trace: AtomicBool::new(self.trace.load(std::sync::atomic::Ordering::Relaxed)),
-            gensym_counter: Arc::new(&GENESYM_COUNTER),
+            gensym_counter: &GENESYM_COUNTER,
         }
     }
 
@@ -75,7 +78,7 @@ impl Evaluator {
     }
 
     pub fn native_object_creator_keys(&self) -> Vec<String> {
-        self.native_registry.keys().iter().cloned().collect()
+        self.native_registry.keys().to_vec()
     }
 
     pub fn get_gensym_id(&self) -> usize {
@@ -110,14 +113,14 @@ impl Evaluator {
                     ok!(Exp::Nil);
                 };
                 let args = &list[1..];
-                if let Exp::Symbol(k) = first_form {
-                    if let Some(f) = self.special_forms.read().get(k) {
-                        return f(args, env, self);
-                    }
+                if let Exp::Symbol(k) = first_form
+                    && let Some(f) = self.special_forms.read().get(k)
+                {
+                    return f(args, env, self);
                 }
 
                 let first_eval = self.eval(first_form, env)?;
-                self.apply(first_eval, &args, env)
+                self.apply(first_eval, args, env)
             }
             #[cfg(feature = "async")]
             Exp::Future(_) => err!("unexpected form: future"),
@@ -155,7 +158,7 @@ impl Evaluator {
 
     fn apply_macro(&self, lambda: LambdaExp, args: &[Exp], env: &SharedEnv) -> Result<Exp> {
         let expanded = self.expand_macro(lambda, args, env)?;
-        self.eval(&expanded, &env)
+        self.eval(&expanded, env)
     }
 
     pub fn expand_macro(&self, lambda: LambdaExp, args: &[Exp], env: &SharedEnv) -> Result<Exp> {
@@ -167,7 +170,7 @@ impl Evaluator {
                 args.len()
             ))
         }
-        let child = Env::extend(env.clone(), &keys, &args);
+        let child = Env::extend(env.clone(), &keys, args);
         self.eval(&lambda.body_exp, &child)
     }
 

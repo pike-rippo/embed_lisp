@@ -57,7 +57,7 @@ fn cons_impl(args: &[Exp], _: &SharedEnv, _: &Evaluator) -> Result<Exp> {
         Exp::Nil => Ok(Exp::List(vec![head.clone()])),
         Exp::List(list) => {
             let mut new_list = vec![head.clone()];
-            new_list.extend_from_slice(&list);
+            new_list.extend_from_slice(list);
             Ok(Exp::List(new_list))
         }
         _ => Ok(Exp::List(vec![head.clone(), args[1].clone()])),
@@ -79,7 +79,7 @@ fn append_impl(args: &[Exp], _: &SharedEnv, _: &Evaluator) -> Result<Exp> {
     }
 
     match &args[0] {
-        Exp::Nil => return Ok(args[1].clone()),
+        Exp::Nil => Ok(args[1].clone()),
         Exp::List(l0) => match &args[1] {
             Exp::List(l1) => {
                 let list: Vec<Exp> = l0.iter().cloned().chain(l1.iter().cloned()).collect();
@@ -120,7 +120,7 @@ fn apply_impl(args: &[Exp], env: &SharedEnv, eval: &Evaluator) -> Result<Exp> {
     } else {
         let mut arg_forms: Vec<Exp> = Vec::with_capacity(args.len() + list_arg.len() - 1);
         arg_forms.extend_from_slice(&args[1..args.len() - 1]);
-        arg_forms.extend_from_slice(&list_arg);
+        arg_forms.extend_from_slice(list_arg);
         eval.apply(f.clone(), &arg_forms, env)
     }
 }

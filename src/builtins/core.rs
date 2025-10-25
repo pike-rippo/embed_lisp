@@ -33,7 +33,7 @@ fn call_impl(args: &[Exp], _: &SharedEnv, _: &Evaluator) -> Result<Exp> {
     let Exp::String(method_name) = &args[1] else {
         err!("method name must be string")
     };
-    native.call_method(&method_name, &args[2..])
+    native.call_method(method_name, &args[2..])
 }
 
 fn range_impl(args: &[Exp], _: &SharedEnv, _: &Evaluator) -> Result<Exp> {
@@ -49,10 +49,7 @@ fn range_impl(args: &[Exp], _: &SharedEnv, _: &Evaluator) -> Result<Exp> {
         let start = first as i64;
         let end = second as i64;
         Ok(Exp::List(
-            (start..end)
-                .into_iter()
-                .map(|i| Exp::Number(i as f64))
-                .collect(),
+            (start..end).map(|i| Exp::Number(i as f64)).collect(),
         ))
     }
 }

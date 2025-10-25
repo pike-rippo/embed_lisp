@@ -32,7 +32,7 @@ impl Parser {
         let mut exps = Vec::new();
         let mut rest = &input[..];
         while !rest.is_empty() {
-            let (exp, new_rest) = tokenize(&rest)?;
+            let (exp, new_rest) = tokenize(rest)?;
             exps.push(exp);
             rest = new_rest;
         }
@@ -95,15 +95,15 @@ fn read_seq(input: &[String]) -> Result<(Exp, &[String])> {
         // obj.methodで、methodにリストは付け付けない
         if next == "." {
             res.insert(res.len() - 1, Exp::Symbol("call".to_string()));
-            let method = rest.get(0).ok_or(Error::from("unexpected '.'"))?;
+            let method = rest.first().ok_or(Error::from("unexpected '.'"))?;
             res.push(Exp::String(method.to_string()));
             xs = rest.get(1..).ok_or(Error::from("unexpected '.'"))?;
-            if xs.first().map_or(false, |e| e == ")") {
+            if xs.first().is_some_and(|e| e == ")") {
                 return Ok((Exp::List(res), &xs[1..]));
             }
         }
 
-        let (exp, new_xs) = tokenize(&xs)?;
+        let (exp, new_xs) = tokenize(xs)?;
         res.push(exp);
         xs = new_xs;
     }
@@ -132,10 +132,11 @@ fn split_whitespace_outside_quote(s: &str) -> Vec<String> {
     let mut tokens: Vec<String> = Vec::new();
     let mut current_token = String::new();
     let mut inside = false;
-    let mut chars = s.chars();
+    let chars = s.chars();
     let mut pre_char_was_backslash = false;
 
-    while let Some(c) = chars.next() {
+    // while let Some(c) = chars.next() {
+    for c in chars {
         if c == '"' && !pre_char_was_backslash {
             inside = !inside;
             current_token.push(c);

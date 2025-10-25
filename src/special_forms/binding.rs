@@ -22,7 +22,7 @@ fn let_impl(args: &[Exp], env: &SharedEnv, eval: &Evaluator, star: bool) -> Resu
         err!("let bindings should be a list")
     };
 
-    let child_env = Env::new_child(Shared::clone(&env));
+    let child_env = Env::new_child(Shared::clone(env));
 
     for pair in binding {
         match pair {

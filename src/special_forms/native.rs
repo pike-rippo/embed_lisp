@@ -13,5 +13,5 @@ fn create_native_impl(args: &[Exp], _: &SharedEnv, eval: &Evaluator) -> Result<E
         return Err("create-native expected a string as the first argument".into());
     };
 
-    eval.create_native_object(&name, args)
+    eval.create_native_object(name, args)
 }

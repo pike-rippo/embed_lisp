@@ -118,15 +118,15 @@ fn for_impl(args: &[Exp], env: &SharedEnv, eval: &Evaluator) -> Result<Exp> {
         err!("binding list must end with a list")
     };
     let mut result = Exp::Nil;
-    let new_env = Env::new_child(Shared::clone(&env));
+    let new_env = Env::new_child(Shared::clone(env));
     for value in values {
-        new_env.define(&k, value.clone());
+        new_env.define(k, value.clone());
         result = eval.eval(&args[1], &new_env)?;
     }
     Ok(result)
 }
 
-fn gensym_impl(args: &[Exp], _: &SharedEnv, eval: &Evaluator) -> Result<Exp> {
+fn gensym_impl(_args: &[Exp], _: &SharedEnv, eval: &Evaluator) -> Result<Exp> {
     Ok(Exp::Symbol(format!("__GEN_SYM__{}", eval.get_gensym_id())))
 }
 
@@ -138,7 +138,7 @@ fn async_impl(args: &[Exp], env: &SharedEnv, eval: &Evaluator) -> Result<Exp> {
         err!("async can only have one form")
     }
 
-    Ok(Exp::Future(FutureExp::new(&args[0], &env, &eval)))
+    Ok(Exp::Future(FutureExp::new(&args[0], env, eval)))
 }
 
 #[cfg(feature = "async")]
@@ -177,7 +177,7 @@ fn await_impl(args: &[Exp], env: &SharedEnv, eval: &Evaluator) -> Result<Exp> {
             use crate::error::Error;
 
             let value = env
-                .lookup(&k)
+                .lookup(k)
                 .ok_or(Error::Reason(format!("unexpected symbol '{}'", k)))?;
 
             if let Exp::Task(f) = value {

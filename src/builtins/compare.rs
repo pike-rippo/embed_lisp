@@ -45,7 +45,7 @@ fn null_impl(args: &[Exp], _: &SharedEnv, _: &Evaluator) -> Result<Exp> {
     let Exp::List(list) = &args[0] else {
         err!("null? expects a list")
     };
-    ok!(list.len() == 0)
+    ok!(list.is_empty())
 }
 
 fn eq_impl(args: &[Exp], _: &SharedEnv, _: &Evaluator) -> Result<Exp> {

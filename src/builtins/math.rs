@@ -15,7 +15,7 @@ pub fn register(env: &SharedEnv) {
 }
 
 pub fn parse_list_of_floats(args: &[Exp]) -> Result<Vec<f64>> {
-    args.iter().map(|x| parse_single_float(x)).collect()
+    args.iter().map(parse_single_float).collect()
 }
 
 fn parse_single_float(exp: &Exp) -> Result<f64> {

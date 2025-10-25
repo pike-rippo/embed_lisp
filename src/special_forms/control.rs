@@ -20,7 +20,7 @@ fn if_impl(args: &[Exp], env: &SharedEnv, eval: &Evaluator) -> Result<Exp> {
     let Some(res_form) = args.get(form_idx) else {
         err!(format!("expected form idx ={}", form_idx))
     };
-    eval.eval(res_form, &env)
+    eval.eval(res_form, env)
 }
 
 fn cond_impl(args: &[Exp], env: &SharedEnv, eval: &Evaluator) -> Result<Exp> {

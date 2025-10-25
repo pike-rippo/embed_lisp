@@ -41,6 +41,12 @@ pub struct Interpreter {
     builtin_env: SharedEnv,
 }
 
+impl Default for Interpreter {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Interpreter {
     pub fn new() -> Self {
         let builtin_env = Env::builtin_env();

@@ -46,9 +46,6 @@ impl PartialEq for Exp {
             _ => false,
         }
     }
-    fn ne(&self, other: &Self) -> bool {
-        !self.eq(other)
-    }
 }
 
 impl Eq for Exp {}
@@ -138,26 +135,24 @@ impl Exp {
     }
 
     pub fn is_truthy(&self) -> bool {
-        match self {
-            Exp::Bool(false) => false,
-            Exp::Nil => false,
-            _ => true,
-        }
+        !matches!(self, Exp::Bool(false) | Exp::Nil)
     }
 
     pub fn is_quote(&self) -> bool {
-        match self {
-            Self::Symbol(s) if &s[..] == "quote" => true,
-            _ => false,
-        }
+        matches!(self, Self::Symbol(s) if &s[..] == "quote")
     }
 
     pub fn is_quoted(&self) -> bool {
         match self {
-            Exp::List(list) => match (list.first(), list.get(1)) {
-                (Some(Exp::Symbol(s)), _) if list.len() == 2 && s == "quote" => true,
-                _ => false,
-            },
+            // Exp::List(list) => match (list.first(), list.get(1)) {
+            //     (Some(Exp::Symbol(s)), _) if list.len() == 2 && s == "quote" => true,
+            //     _ => false,
+            // },
+            // _ => false,
+            Exp::List(list) => {
+                matches!(
+                    (list.first(), list.get(1)), (Some(Exp::Symbol(s)), _) if list.len() == 2 && s == "quote")
+            }
             _ => false,
         }
     }

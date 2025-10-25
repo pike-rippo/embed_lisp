@@ -30,12 +30,12 @@ fn expand_macro_impl(args: &[Exp], env: &SharedEnv, eval: &Evaluator) -> Result<
 }
 
 fn dump_env_impl(args: &[Exp], env: &SharedEnv, _: &Evaluator) -> Result<Exp> {
-    env.dump(args.get(0).map_or(false, |e| e.is_truthy()));
+    env.dump(args.first().is_some_and(|e| e.is_truthy()));
     ok!(true)
 }
 
 fn trace_eval_impl(args: &[Exp], _: &SharedEnv, eval: &Evaluator) -> Result<Exp> {
-    eval.set_trace(args.get(0).map_or(true, |e| e.is_truthy()));
+    eval.set_trace(args.first().is_none_or(|e| e.is_truthy()));
     ok!(true)
 }
 

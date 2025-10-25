@@ -5,9 +5,9 @@ use embed_lisp::Interpreter;
 
 fn read_line(depth: i32, input: &mut String) {
     if depth == 0 {
-        print!("{}", format!("[depth {}]  > ", depth));
+        print!("[depth {}]  > ", depth);
     } else {
-        print!("{}", format!("[depth {}] *> ", depth));
+        print!("[depth {}] *> ", depth);
     }
     std::io::stdout().flush().unwrap();
     std::io::stdin().read_line(input).unwrap();

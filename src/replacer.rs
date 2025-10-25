@@ -19,8 +19,8 @@ impl Replacer {
         for (target, negative_lookbehind, negative_lookahead) in args {
             self = self.insert_whitespace_outside_double_quote(
                 target,
-                negative_lookbehind.clone(),
-                negative_lookahead.clone(),
+                *negative_lookbehind,
+                *negative_lookahead,
             );
         }
         self
@@ -62,20 +62,18 @@ impl Replacer {
                 result.push(c);
             } else if !inside {
                 matched = false;
-                if from.len() > 0
+                if !from.is_empty()
                     && c == from.chars().next().unwrap_or('\0')
                     && (negative_lookbehind.is_none() || last != negative_lookbehind)
-                {
-                    if negative_lookahead.is_none()
+                    && (negative_lookahead.is_none()
                         || chars
                             .peek()
-                            .map_or(true, |next| Some(*next) != negative_lookahead)
-                    {
-                        let lookahead_str: String =
-                            chars.clone().take(from.len() - 1).collect::<String>();
-                        if lookahead_str == from[1..].to_string() {
-                            matched = true;
-                        }
+                            .is_none_or(|next| Some(*next) != negative_lookahead))
+                {
+                    let lookahead_str: String =
+                        chars.clone().take(from.len() - 1).collect::<String>();
+                    if lookahead_str == from[1..] {
+                        matched = true;
                     }
                 }
 

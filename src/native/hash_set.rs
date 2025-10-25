@@ -55,7 +55,7 @@ impl HashSetObject {
     }
 
     fn handle_clear(&self, args: &[Exp]) -> Result<Exp> {
-        if args.len() != 0 {
+        if args.is_empty() {
             return Err("clear expected 0 argument".into());
         }
 
@@ -64,7 +64,7 @@ impl HashSetObject {
     }
 
     fn handle_len(&self, args: &[Exp]) -> Result<Exp> {
-        if args.len() != 0 {
+        if args.is_empty() {
             return Err("len expected 0 argument".into());
         }
 
