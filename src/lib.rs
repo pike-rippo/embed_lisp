@@ -30,6 +30,7 @@ pub use error::Error;
 pub use evaluator::{Evaluator, SpecialFormFn};
 pub use expression::{BuiltinFunction, Exp};
 pub use native::NativeObject;
+pub use native_registry::NativeCreator;
 
 use crate::{environment::Env, error::Result, parser::Parser, typedef::SharedEnv};
 
@@ -70,6 +71,10 @@ impl Interpreter {
 
     pub fn register_special_form(&self, key: &str, f: SpecialFormFn) {
         self.eval.register_special_form(key, f);
+    }
+
+    pub fn register_native_object_creator(&self, key: &str, creator: NativeCreator) {
+        self.eval.register_native_object_creator(key, creator);
     }
 
     pub fn register_builtin(&self, key: &str, exp: Exp) {

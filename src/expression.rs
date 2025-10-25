@@ -206,7 +206,7 @@ impl Exp {
         #[cfg(not(feature = "async"))]
         match self {
             Exp::Native(_) | Exp::Function(_) | Exp::Lambda(_) | Exp::Macro(_) => {
-                Err("invalid key type for HashMap".into())
+                Err("invalid key type".into())
             }
             _ => Ok(()),
         }
@@ -218,7 +218,7 @@ impl Exp {
             | Exp::Lambda(_)
             | Exp::Macro(_)
             | Exp::Future(_)
-            | Exp::Task(_) => Err("invalid key type for HashMap".into()),
+            | Exp::Task(_) => Err("invalid key type".into()),
             _ => Ok(()),
         }
     }

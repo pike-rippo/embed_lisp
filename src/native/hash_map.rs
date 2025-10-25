@@ -21,7 +21,7 @@ impl HashMapObject {
         }
     }
 
-    pub fn handle_insert(&self, args: &[Exp]) -> Result<Exp> {
+    fn handle_insert(&self, args: &[Exp]) -> Result<Exp> {
         if args.len() != 2 {
             return Err("insert expected 2 arguments".into());
         }
@@ -34,7 +34,7 @@ impl HashMapObject {
         ok!(true)
     }
 
-    pub fn handle_get(&self, args: &[Exp]) -> Result<Exp> {
+    fn handle_get(&self, args: &[Exp]) -> Result<Exp> {
         if args.len() != 1 {
             return Err("get expected 1 argument".into());
         }
@@ -45,7 +45,7 @@ impl HashMapObject {
         Ok(self.inner.read().get(k).cloned().unwrap_or(Exp::Nil))
     }
 
-    pub fn handle_remove(&self, args: &[Exp]) -> Result<Exp> {
+    fn handle_remove(&self, args: &[Exp]) -> Result<Exp> {
         if args.len() != 1 {
             return Err("get expected 1 argument".into());
         }
@@ -56,7 +56,7 @@ impl HashMapObject {
         Ok(self.inner.write().remove(k).unwrap_or(Exp::Nil))
     }
 
-    pub fn handle_keys(&self, _args: &[Exp]) -> Result<Exp> {
+    fn handle_keys(&self, _args: &[Exp]) -> Result<Exp> {
         let keys = self
             .inner
             .read()
@@ -66,7 +66,7 @@ impl HashMapObject {
         Ok(Exp::List(keys.into_iter().map(Exp::String).collect()))
     }
 
-    pub fn handle_len(&self, _args: &[Exp]) -> Result<Exp> {
+    fn handle_len(&self, _args: &[Exp]) -> Result<Exp> {
         Ok(Exp::Number(self.inner.read().len() as f64))
     }
 }
@@ -76,14 +76,14 @@ impl NativeObject for HashMapObject {
         "HashMap"
     }
 
-    fn call_method(&self, method_name: &str, args: &[Exp]) -> Result<Exp> {
-        match method_name {
+    fn call_method(&self, name: &str, args: &[Exp]) -> Result<Exp> {
+        match name {
             "insert" => self.handle_insert(args),
             "get" => self.handle_get(args),
             "remove" => self.handle_remove(args),
             "keys" => self.handle_keys(args),
             "len" => self.handle_len(args),
-            _ => Err(format!("HashMap has no method {}", method_name).into()),
+            _ => Err(format!("HashMap has no method {}", name).into()),
         }
     }
 }

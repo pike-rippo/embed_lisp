@@ -1,4 +1,4 @@
-use std::{fmt::Display, io::Write};
+use std::io::Write;
 
 use colorize::Colorize;
 use embed_lisp::Interpreter;
@@ -37,7 +37,7 @@ fn parens_balanced(s: &str) -> (bool, i32) {
 fn main() {
     let interpreter = Interpreter::new();
     let mut buffer = String::new();
-    let mut input = String::new();
+    let mut input: String;
     loop {
         let (_, depth) = parens_balanced(&buffer);
         input = "".to_string();

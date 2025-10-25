@@ -4,6 +4,7 @@ pub fn register(env: &SharedEnv) {
     env.define("expand-macro", Exp::Function(expand_macro_impl));
     env.define("dump-env", Exp::Function(dump_env_impl));
     env.define("trace-eval", Exp::Function(trace_eval_impl));
+    env.define("native-keys", Exp::Function(native_keys_eval_impl));
 }
 
 fn expand_macro_impl(args: &[Exp], env: &SharedEnv, eval: &Evaluator) -> Result<Exp> {
@@ -34,7 +35,14 @@ fn dump_env_impl(args: &[Exp], env: &SharedEnv, _: &Evaluator) -> Result<Exp> {
 }
 
 fn trace_eval_impl(args: &[Exp], _: &SharedEnv, eval: &Evaluator) -> Result<Exp> {
-    // eval.set_trace(true);
-    eval.set_trace(args.get(0).map_or(false, |e| e.is_truthy()));
+    eval.set_trace(args.get(0).map_or(true, |e| e.is_truthy()));
+    ok!(true)
+}
+
+fn native_keys_eval_impl(_: &[Exp], _: &SharedEnv, eval: &Evaluator) -> Result<Exp> {
+    println!("native object keys:");
+    for k in eval.native_object_creator_keys() {
+        println!("   {}", k);
+    }
     ok!(true)
 }

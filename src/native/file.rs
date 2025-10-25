@@ -10,7 +10,6 @@ use crate::{
     error::{Error, Result},
     expression::Exp,
     native::NativeObject,
-    native_registry::NativeCreator,
     ok,
     typedef::Shared,
 };
