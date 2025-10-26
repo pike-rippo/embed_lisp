@@ -15,7 +15,8 @@ pub fn register(eval: &Evaluator) {
     eval.register_special_form("begin", begin_impl);
     eval.register_special_form("quote", quote_impl);
     eval.register_special_form("quasiquote", quasiquote_impl);
-    eval.register_special_form("for", for_impl);
+    eval.register_special_form("for-each", for_each_impl);
+    eval.register_special_form("loop", loop_impl);
     eval.register_special_form("gensym", gensym_impl);
 
     #[cfg(feature = "async")]
@@ -74,14 +75,6 @@ fn lambda_impl(args: &[Exp], _: &SharedEnv, _: &Evaluator) -> EvalResult {
 pub fn begin_impl(args: &[Exp], env: &SharedEnv, eval: &Evaluator) -> EvalResult {
     let mut last = Exp::Nil;
 
-    // for form in args {
-    //     let val = eval.eval(form, env)?;
-    //     if val.is_control_flow() {
-    //         ok!(val)
-    //     }
-    //     last = val;
-    // }
-    //
     for form in args {
         match eval.eval(form, env)? {
             EvalFlow::Value(v) => last = v,
@@ -107,20 +100,11 @@ fn quasiquote_impl(args: &[Exp], env: &SharedEnv, eval: &Evaluator) -> EvalResul
         err!("quasiquote can only have one form")
     }
 
-    // eval.eval_quasiquote(&args[0], env)
     let (exp, _splicing) = eval.eval_quasiquote(&args[0], env)?;
     Ok(exp.value_flow())
-    // if splicing {
-    //     let Exp::List(items) = exp else {
-    //         unreachable!();
-    //     };
-    //     new_list.extend(items);
-    // } else {
-    //     new_list.push(exp);
-    // }
 }
 
-fn for_impl(args: &[Exp], env: &SharedEnv, eval: &Evaluator) -> EvalResult {
+fn for_each_impl(args: &[Exp], env: &SharedEnv, eval: &Evaluator) -> EvalResult {
     if args.len() < 2 {
         err!("for expects at least 2 arguments")
     }
@@ -141,10 +125,6 @@ fn for_impl(args: &[Exp], env: &SharedEnv, eval: &Evaluator) -> EvalResult {
     let new_env = Env::new_child(Shared::clone(env));
     for value in values {
         new_env.define(k, value.clone());
-        // result = eval.eval(&args[1], &new_env)?;
-        // match eval.eval_with_flow(&args[1], &new_env)? {
-        //     EvalFlow::Value(_) => continue,
-        // }
         match begin_impl(&args[1..], &new_env, eval)? {
             EvalFlow::Value(exp) => result = exp,
             EvalFlow::Continue => continue,
@@ -153,6 +133,17 @@ fn for_impl(args: &[Exp], env: &SharedEnv, eval: &Evaluator) -> EvalResult {
         }
     }
     Ok(result.value_flow())
+}
+
+fn loop_impl(args: &[Exp], env: &SharedEnv, eval: &Evaluator) -> EvalResult {
+    loop {
+        match begin_impl(args, env, eval)? {
+            EvalFlow::Value(_) => {}
+            EvalFlow::Continue => continue,
+            EvalFlow::Break => return Ok(Exp::Nil.value_flow()),
+            flow @ EvalFlow::Return(_) => return Ok(flow),
+        }
+    }
 }
 
 fn gensym_impl(_args: &[Exp], _: &SharedEnv, eval: &Evaluator) -> EvalResult {
@@ -226,33 +217,4 @@ fn await_impl(args: &[Exp], env: &SharedEnv, eval: &Evaluator) -> EvalResult {
             exp => Ok(exp),
         },
     }
-
-    // if let Exp::Symbol(k) = &args[0] {
-    //     let value = env
-    //         .lookup(&k)
-    //         .ok_or(Error::Reason(format!("unexpected symbol '{}'", k)))?;
-
-    //     if let Exp::Task(f) = value {
-    //         let result = if tokio::runtime::Handle::try_current().is_ok() {
-    //             tokio::runtime::Handle::current().block_on(f.async_await())
-    //         } else {
-    //             f.sync_await()
-    //         }?;
-    //         env.assign(k, result.clone());
-    //         return Ok(result);
-    //     } else {
-    //         return Ok(value);
-    //     }
-    // }
-
-    // let val = eval.eval(&args[0], env)?;
-    // if let Exp::Task(f) = val {
-    //     if tokio::runtime::Handle::try_current().is_ok() {
-    //         tokio::task::block_in_place(|| f.sync_await())
-    //     } else {
-    //         f.sync_await()
-    //     }
-    // } else {
-    //     return Ok(val);
-    // }
 }
