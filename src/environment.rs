@@ -3,7 +3,9 @@ use std::collections::HashMap;
 use parking_lot::RwLock;
 
 use crate::{
+    Error,
     builtins::register_all,
+    error::Result,
     expression::Exp,
     typedef::{Shared, SharedEnv},
 };
@@ -111,6 +113,11 @@ impl Env {
                 found.or_else(|| Some(outer.clone()))
             }
         }
+    }
+
+    pub fn try_lookup(&self, k: &str) -> Result<Exp> {
+        self.lookup(k)
+            .ok_or(Error::Reason(format!("unexpected symbol '{}'", k)))
     }
 
     pub fn lookup(&self, k: &str) -> Option<Exp> {

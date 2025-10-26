@@ -2,10 +2,10 @@ use std::collections::HashMap;
 
 use parking_lot::RwLock;
 
-use crate::{Exp, error::Result, typedef::Shared};
+use crate::{Exp, flow::EvalResult, typedef::Shared};
 
-// pub type NativeCreator = Box<dyn Fn(&[Exp]) -> Result<Exp> + Send + Sync + 'static>;
-pub type NativeCreator = fn(&[Exp]) -> Result<Exp>;
+// pub type NativeCreator = Box<dyn Fn(&[Exp]) -> EvalResult + Send + Sync + 'static>;
+pub type NativeCreator = fn(&[Exp]) -> EvalResult;
 
 #[derive(Clone)]
 pub struct NativeRegistry {
@@ -23,7 +23,7 @@ impl NativeRegistry {
         self.inner.write().insert(name.to_string(), creator);
     }
 
-    pub fn create(&self, name: &str, args: &[Exp]) -> Result<Exp> {
+    pub fn create(&self, name: &str, args: &[Exp]) -> EvalResult {
         let guard = self.inner.read();
         let creator = guard
             .get(name)

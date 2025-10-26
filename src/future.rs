@@ -3,7 +3,7 @@ use tokio::task::JoinHandle;
 
 #[cfg(feature = "async")]
 use crate::{
-    GLOBAL_RUNTIME, error::Result, evaluator::Evaluator, expression::Exp, typedef::SharedEnv,
+    GLOBAL_RUNTIME, evaluator::Evaluator, expression::Exp, flow::EvalResult, typedef::SharedEnv,
 };
 
 #[cfg(feature = "async")]
@@ -34,7 +34,7 @@ impl FutureExp {
         }
     }
 
-    pub fn spawn(&self) -> JoinHandle<Result<Exp>> {
+    pub fn spawn(&self) -> JoinHandle<EvalResult> {
         let copy_exp = self.exp.clone();
         let copy_env = self.env.deep_copy();
         let copy_eval = self.eval.deep_copy();

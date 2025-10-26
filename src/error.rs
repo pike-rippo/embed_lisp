@@ -2,12 +2,12 @@ use thiserror::Error;
 
 pub type Result<T> = std::result::Result<T, Error>;
 
-#[macro_export]
-macro_rules! ok {
-    ($value:expr) => {
-        return std::result::Result::Ok($value.into())
-    };
-}
+// #[macro_export]
+// macro_rules! ok {
+//     ($value:expr) => {
+//         return std::result::Result::Ok($value.into())
+//     };
+// }
 
 #[macro_export]
 macro_rules! err {

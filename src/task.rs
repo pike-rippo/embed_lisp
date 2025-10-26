@@ -5,21 +5,17 @@ use tokio::sync::Mutex;
 use tokio::task::JoinHandle;
 
 #[cfg(feature = "async")]
-use crate::{
-    error::{Error, Result},
-    expression::Exp,
-    typedef::Shared,
-};
+use crate::{error::Error, flow::EvalResult, typedef::Shared};
 
 #[cfg(feature = "async")]
 #[derive(Clone)]
 pub struct TaskExp {
-    handle: Shared<Mutex<Option<JoinHandle<Result<Exp>>>>>,
+    handle: Shared<Mutex<Option<JoinHandle<EvalResult>>>>,
 }
 
 #[cfg(feature = "async")]
 impl TaskExp {
-    pub fn new(handle: JoinHandle<Result<Exp>>) -> Self {
+    pub fn new(handle: JoinHandle<EvalResult>) -> Self {
         Self {
             handle: Shared::new(Mutex::new(Some(handle))),
         }
@@ -45,11 +41,11 @@ impl TaskExp {
         }
     }
 
-    pub fn get(&self) -> Result<Exp> {
+    pub fn get(&self) -> EvalResult {
         Err(Error::from("Pending"))
     }
 
-    pub fn sync_await(&self) -> Result<Exp> {
+    pub fn sync_await(&self) -> EvalResult {
         use crate::{GLOBAL_RUNTIME, err};
 
         let Some(handle) = self.handle.blocking_lock().take() else {
@@ -67,7 +63,7 @@ impl TaskExp {
         }
     }
 
-    pub async fn async_await(&self) -> Result<Exp> {
+    pub async fn async_await(&self) -> EvalResult {
         self.handle
             .lock()
             .await

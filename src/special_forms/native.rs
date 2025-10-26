@@ -1,10 +1,10 @@
-use crate::{Evaluator, Exp, error::Result, typedef::SharedEnv};
+use crate::{Evaluator, Exp, flow::EvalResult, typedef::SharedEnv};
 
 pub fn register(eval: &Evaluator) {
     eval.register_special_form("create-native", create_native_impl);
 }
 
-fn create_native_impl(args: &[Exp], _: &SharedEnv, eval: &Evaluator) -> Result<Exp> {
+fn create_native_impl(args: &[Exp], _: &SharedEnv, eval: &Evaluator) -> EvalResult {
     let (name, args) = args
         .split_first()
         .ok_or("create-native expected at least one argument")?;

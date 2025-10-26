@@ -1,13 +1,13 @@
-use crate::{error::Result, evaluator::Evaluator, expression::Exp, ok, typedef::SharedEnv};
+use crate::{evaluator::Evaluator, expression::Exp, flow::EvalResult, typedef::SharedEnv};
 
 pub fn register(env: &SharedEnv) {
     env.define("print", Exp::Function(print_impl));
 }
 
-fn print_impl(args: &[Exp], _: &SharedEnv, _: &Evaluator) -> Result<Exp> {
+fn print_impl(args: &[Exp], _: &SharedEnv, _: &Evaluator) -> EvalResult {
     for arg in args {
         println!("{}", arg);
     }
 
-    ok!(true)
+    Ok(Exp::Bool(true).value_flow())
 }

@@ -3,6 +3,7 @@ use std::hash::{Hash, Hasher};
 use crate::{
     error::Result,
     evaluator::Evaluator,
+    flow::{EvalFlow, EvalResult},
     lambda::LambdaExp,
     native::NativeObject,
     typedef::{Shared, SharedEnv},
@@ -10,7 +11,7 @@ use crate::{
 #[cfg(feature = "async")]
 use crate::{future::FutureExp, task::TaskExp};
 
-pub type BuiltinFunction = fn(&[Exp], &SharedEnv, &Evaluator) -> Result<Exp>;
+pub type BuiltinFunction = fn(&[Exp], &SharedEnv, &Evaluator) -> EvalResult;
 
 #[derive(Clone)]
 pub enum Exp {
@@ -137,6 +138,14 @@ impl std::fmt::Display for Exp {
 impl Exp {
     pub fn quote() -> Self {
         Exp::Symbol("quote".to_string())
+    }
+
+    pub fn value_flow(self) -> EvalFlow {
+        EvalFlow::Value(self)
+    }
+
+    pub fn return_flow(self) -> EvalFlow {
+        EvalFlow::Return(self)
     }
 
     pub fn wrap_quote(&self) -> Self {

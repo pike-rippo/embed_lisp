@@ -1,9 +1,9 @@
 use crate::{
     environment::Env,
     err,
-    error::Result,
     evaluator::Evaluator,
     expression::Exp,
+    flow::EvalResult,
     special_forms::core::begin_impl,
     typedef::{Shared, SharedEnv},
 };
@@ -13,7 +13,7 @@ pub fn register(eval: &Evaluator) {
     eval.register_special_form("let*", |args, env, eval| let_impl(args, env, eval, true));
 }
 
-fn let_impl(args: &[Exp], env: &SharedEnv, eval: &Evaluator, star: bool) -> Result<Exp> {
+fn let_impl(args: &[Exp], env: &SharedEnv, eval: &Evaluator, star: bool) -> EvalResult {
     if args.is_empty() {
         err!("let requires bindings and least one body expression")
     }
@@ -35,7 +35,7 @@ fn let_impl(args: &[Exp], env: &SharedEnv, eval: &Evaluator, star: bool) -> Resu
                 } else {
                     eval.eval(&list[1], env)
                 }?;
-                let _ = &child_env.define(k, v);
+                let _ = &child_env.define(k, v.try_unwrap()?);
             }
             _ => err!("invalid biding pair"),
         }

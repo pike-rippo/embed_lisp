@@ -2,6 +2,7 @@ use crate::{
     error::{Error, Result},
     evaluator::Evaluator,
     expression::Exp,
+    flow::EvalResult,
     typedef::SharedEnv,
 };
 
@@ -25,39 +26,39 @@ fn parse_single_float(exp: &Exp) -> Result<f64> {
     }
 }
 
-fn add_impl(args: &[Exp], _: &SharedEnv, _: &Evaluator) -> Result<Exp> {
+fn add_impl(args: &[Exp], _: &SharedEnv, _: &Evaluator) -> EvalResult {
     let sum = parse_list_of_floats(args)?
         .iter()
         .fold(0.0, |sum, n| sum + n);
-    Ok(Exp::Number(sum))
+    Ok(Exp::Number(sum).value_flow())
 }
 
-fn mul_impl(args: &[Exp], _: &SharedEnv, _: &Evaluator) -> Result<Exp> {
+fn mul_impl(args: &[Exp], _: &SharedEnv, _: &Evaluator) -> EvalResult {
     let mul = parse_list_of_floats(args)?
         .iter()
         .fold(1.0, |mul, n| mul * n);
-    Ok(Exp::Number(mul))
+    Ok(Exp::Number(mul).value_flow())
 }
 
-fn sub_impl(args: &[Exp], _: &SharedEnv, _: &Evaluator) -> Result<Exp> {
+fn sub_impl(args: &[Exp], _: &SharedEnv, _: &Evaluator) -> EvalResult {
     let floats = parse_list_of_floats(args)?;
     let first = *floats
         .first()
         .ok_or(Error::from("expected at least one number"))?;
     let sum_of_rest = floats[1..].iter().fold(0.0, |sum, n| sum + n);
-    Ok(Exp::Number(first - sum_of_rest))
+    Ok(Exp::Number(first - sum_of_rest).value_flow())
 }
 
-fn div_impl(args: &[Exp], _: &SharedEnv, _: &Evaluator) -> Result<Exp> {
+fn div_impl(args: &[Exp], _: &SharedEnv, _: &Evaluator) -> EvalResult {
     let floats = parse_list_of_floats(args)?;
     let first = *floats
         .first()
         .ok_or(Error::from("expected at least one number"))?;
     let mul_of_rest = floats[1..].iter().fold(0.0, |mul, n| mul + n);
-    Ok(Exp::Number(first / mul_of_rest))
+    Ok(Exp::Number(first / mul_of_rest).value_flow())
 }
 
-fn mod_impl(args: &[Exp], _: &SharedEnv, _: &Evaluator) -> Result<Exp> {
+fn mod_impl(args: &[Exp], _: &SharedEnv, _: &Evaluator) -> EvalResult {
     if args.len() != 2 {
         Err(Error::from("expected exactly two numbers"))
     } else {
@@ -68,6 +69,6 @@ fn mod_impl(args: &[Exp], _: &SharedEnv, _: &Evaluator) -> Result<Exp> {
         let second = *floats
             .get(1)
             .ok_or(Error::from("expected at least two numbers"))?;
-        Ok(Exp::Number(first % second))
+        Ok(Exp::Number(first % second).value_flow())
     }
 }

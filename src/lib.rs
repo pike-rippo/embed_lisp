@@ -10,6 +10,7 @@ mod environment;
 mod error;
 mod evaluator;
 mod expression;
+mod flow;
 mod future;
 mod lambda;
 mod native;
@@ -32,7 +33,7 @@ pub use expression::{BuiltinFunction, Exp};
 pub use native::NativeObject;
 pub use native_registry::NativeCreator;
 
-use crate::{environment::Env, error::Result, parser::Parser, typedef::SharedEnv};
+use crate::{environment::Env, flow::EvalResult, parser::Parser, typedef::SharedEnv};
 
 pub struct Interpreter {
     parser: Parser,
@@ -58,15 +59,15 @@ impl Interpreter {
         }
     }
 
-    pub fn eval(&self, exp: &Exp) -> Result<Exp> {
+    pub fn eval(&self, exp: &Exp) -> EvalResult {
         self.eval.eval(exp, &self.env)
     }
 
-    pub fn eval_str(&self, input: &str) -> Result<Exp> {
+    pub fn eval_str(&self, input: &str) -> EvalResult {
         match self.parser.parse(input) {
             Err(e) => Err(e),
             Ok(exps) => {
-                let mut result = Exp::Nil;
+                let mut result = Exp::Nil.value_flow();
                 for exp in exps {
                     result = self.eval(&exp)?;
                 }

@@ -6,11 +6,7 @@ use std::{
 use parking_lot::RwLock;
 
 use crate::{
-    Evaluator, err,
-    error::{Error, Result},
-    expression::Exp,
-    native::NativeObject,
-    ok,
+    Evaluator, err, error::Error, expression::Exp, flow::EvalResult, native::NativeObject,
     typedef::Shared,
 };
 
@@ -60,7 +56,7 @@ pub fn register(eval: &Evaluator) {
         let file = options
             .open(path)
             .map_err(|e| format!("failed to open {}: {}", path, e))?;
-        Ok(Exp::Native(Shared::new(FileObject::new(file))))
+        Ok(Exp::Native(Shared::new(FileObject::new(file))).value_flow())
     });
 }
 
@@ -71,16 +67,16 @@ impl FileObject {
         }
     }
 
-    fn handle_read(&self, _args: &[Exp]) -> Result<Exp> {
+    fn handle_read(&self, _args: &[Exp]) -> EvalResult {
         let mut buf = String::new();
         self.inner
             .write()
             .read_to_string(&mut buf)
             .or(Err(Error::from("file read error")))?;
-        Ok(Exp::String(buf))
+        Ok(Exp::String(buf).value_flow())
     }
 
-    fn handle_write(&self, args: &[Exp]) -> Result<Exp> {
+    fn handle_write(&self, args: &[Exp]) -> EvalResult {
         if args.len() != 1 {
             err!("write expects one argument")
         }
@@ -93,10 +89,10 @@ impl FileObject {
             .write()
             .write_all(s.as_bytes())
             .or(Err(Error::from("file read error")))?;
-        ok!(true)
+        Ok(Exp::Bool(true).value_flow())
     }
 
-    fn handle_writeln(&self, args: &[Exp]) -> Result<Exp> {
+    fn handle_writeln(&self, args: &[Exp]) -> EvalResult {
         if args.len() != 1 {
             err!("write expects one argument")
         }
@@ -109,7 +105,7 @@ impl FileObject {
             .write()
             .write_all(format!("{}\n", s).as_bytes())
             .or(Err(Error::from("file read error")))?;
-        ok!(true)
+        Ok(Exp::Bool(true).value_flow())
     }
 }
 
@@ -118,7 +114,7 @@ impl NativeObject for FileObject {
         "File"
     }
 
-    fn call_method(&self, method_name: &str, args: &[Exp]) -> Result<Exp> {
+    fn call_method(&self, method_name: &str, args: &[Exp]) -> EvalResult {
         match method_name {
             "read" => self.handle_read(args),
             "write" => self.handle_write(args),

@@ -1,5 +1,9 @@
 use crate::{
-    err, error::Result, evaluator::Evaluator, expression::Exp, special_forms::core::begin_impl,
+    err,
+    evaluator::Evaluator,
+    expression::Exp,
+    flow::{EvalFlow, EvalResult},
+    special_forms::core::begin_impl,
     typedef::SharedEnv,
 };
 
@@ -11,19 +15,23 @@ pub fn register(eval: &Evaluator) {
     eval.register_special_form("or", or_impl);
 }
 
-fn if_impl(args: &[Exp], env: &SharedEnv, eval: &Evaluator) -> Result<Exp> {
+fn if_impl(args: &[Exp], env: &SharedEnv, eval: &Evaluator) -> EvalResult {
     let Some(test_form) = args.first() else {
         err!("expected test form")
     };
     let test_eval = eval.eval(test_form, env)?;
-    let form_idx = if test_eval.is_truthy() { 1 } else { 2 };
+    let form_idx = if test_eval.try_unwrap()?.is_truthy() {
+        1
+    } else {
+        2
+    };
     let Some(res_form) = args.get(form_idx) else {
         err!(format!("expected form idx ={}", form_idx))
     };
     eval.eval(res_form, env)
 }
 
-fn cond_impl(args: &[Exp], env: &SharedEnv, eval: &Evaluator) -> Result<Exp> {
+fn cond_impl(args: &[Exp], env: &SharedEnv, eval: &Evaluator) -> EvalResult {
     for clause in args {
         let Exp::List(items) = clause else {
             err!("cond clause must be a list")
@@ -34,29 +42,29 @@ fn cond_impl(args: &[Exp], env: &SharedEnv, eval: &Evaluator) -> Result<Exp> {
 
         let condition = &items[0];
 
-        if let Exp::Bool(true) = eval.eval(condition, env)? {
+        if let EvalFlow::Value(Exp::Bool(true)) = eval.eval(condition, env)? {
             return begin_impl(args, env, eval);
         }
     }
-    Ok(Exp::Nil)
+    Ok(Exp::Nil.value_flow())
 }
 
-fn and_impl(args: &[Exp], env: &SharedEnv, eval: &Evaluator) -> Result<Exp> {
+fn and_impl(args: &[Exp], env: &SharedEnv, eval: &Evaluator) -> EvalResult {
     for arg in args {
         let res = eval.eval(arg, env)?;
-        if !res.is_truthy() {
-            return Ok(Exp::Bool(false));
+        if !res.try_unwrap()?.is_truthy() {
+            return Ok(Exp::Bool(false).value_flow());
         }
     }
-    Ok(Exp::Bool(true))
+    Ok(Exp::Bool(true).value_flow())
 }
 
-fn or_impl(args: &[Exp], env: &SharedEnv, eval: &Evaluator) -> Result<Exp> {
+fn or_impl(args: &[Exp], env: &SharedEnv, eval: &Evaluator) -> EvalResult {
     for arg in args {
         let res = eval.eval(arg, env)?;
-        if !res.is_truthy() {
-            return Ok(Exp::Bool(true));
+        if !res.try_unwrap()?.is_truthy() {
+            return Ok(Exp::Bool(true).value_flow());
         }
     }
-    Ok(Exp::Bool(false))
+    Ok(Exp::Bool(false).value_flow())
 }

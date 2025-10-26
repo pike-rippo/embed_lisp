@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use parking_lot::RwLock;
 
-use crate::{Evaluator, error::Result, expression::Exp, native::NativeObject, ok, typedef::Shared};
+use crate::{Evaluator, expression::Exp, flow::EvalResult, native::NativeObject, typedef::Shared};
 
 pub struct HashMapObject {
     inner: RwLock<HashMap<Exp, Exp>>,
@@ -10,7 +10,7 @@ pub struct HashMapObject {
 
 pub fn register(eval: &Evaluator) {
     eval.register_native_object_creator("HashMap", |_args: &[Exp]| {
-        Ok(Exp::Native(Shared::new(HashMapObject::new())))
+        Ok(Exp::Native(Shared::new(HashMapObject::new())).value_flow())
     });
 }
 
@@ -21,7 +21,7 @@ impl HashMapObject {
         }
     }
 
-    fn handle_insert(&self, args: &[Exp]) -> Result<Exp> {
+    fn handle_insert(&self, args: &[Exp]) -> EvalResult {
         if args.len() != 2 {
             return Err("insert expected 2 arguments".into());
         }
@@ -31,10 +31,10 @@ impl HashMapObject {
 
         self.inner.write().insert(k.clone(), v.clone());
 
-        ok!(true)
+        Ok(Exp::Bool(true).value_flow())
     }
 
-    fn handle_get(&self, args: &[Exp]) -> Result<Exp> {
+    fn handle_get(&self, args: &[Exp]) -> EvalResult {
         if args.len() != 1 {
             return Err("get expected 1 argument".into());
         }
@@ -42,10 +42,16 @@ impl HashMapObject {
         let k = &args[0];
         k.check_key_allowed()?;
 
-        Ok(self.inner.read().get(k).cloned().unwrap_or(Exp::Nil))
+        Ok(self
+            .inner
+            .read()
+            .get(k)
+            .cloned()
+            .unwrap_or(Exp::Nil)
+            .value_flow())
     }
 
-    fn handle_remove(&self, args: &[Exp]) -> Result<Exp> {
+    fn handle_remove(&self, args: &[Exp]) -> EvalResult {
         if args.len() != 1 {
             return Err("get expected 1 argument".into());
         }
@@ -53,21 +59,26 @@ impl HashMapObject {
         let k = &args[0];
         k.check_key_allowed()?;
 
-        Ok(self.inner.write().remove(k).unwrap_or(Exp::Nil))
+        Ok(self
+            .inner
+            .write()
+            .remove(k)
+            .unwrap_or(Exp::Nil)
+            .value_flow())
     }
 
-    fn handle_keys(&self, _args: &[Exp]) -> Result<Exp> {
+    fn handle_keys(&self, _args: &[Exp]) -> EvalResult {
         let keys = self
             .inner
             .read()
             .keys()
             .map(|e| e.as_string())
             .collect::<Vec<String>>();
-        Ok(Exp::List(keys.into_iter().map(Exp::String).collect()))
+        Ok(Exp::List(keys.into_iter().map(Exp::String).collect()).value_flow())
     }
 
-    fn handle_len(&self, _args: &[Exp]) -> Result<Exp> {
-        Ok(Exp::Number(self.inner.read().len() as f64))
+    fn handle_len(&self, _args: &[Exp]) -> EvalResult {
+        Ok(Exp::Number(self.inner.read().len() as f64).value_flow())
     }
 }
 
@@ -76,7 +87,7 @@ impl NativeObject for HashMapObject {
         "HashMap"
     }
 
-    fn call_method(&self, name: &str, args: &[Exp]) -> Result<Exp> {
+    fn call_method(&self, name: &str, args: &[Exp]) -> EvalResult {
         match name {
             "insert" => self.handle_insert(args),
             "get" => self.handle_get(args),

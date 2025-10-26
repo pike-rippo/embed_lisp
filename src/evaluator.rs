@@ -12,14 +12,15 @@ use crate::{
     err,
     error::{Error, Result},
     expression::Exp,
+    flow::{EvalFlow, EvalResult},
     lambda::LambdaExp,
     native,
     native_registry::{NativeCreator, NativeRegistry},
-    ok, special_forms,
+    special_forms,
     typedef::{Shared, SharedEnv},
 };
 
-pub type SpecialFormFn = fn(&[Exp], &SharedEnv, &Evaluator) -> Result<Exp>;
+pub type SpecialFormFn = fn(&[Exp], &SharedEnv, &Evaluator) -> EvalResult;
 
 pub struct Evaluator {
     special_forms: RwLock<HashMap<String, SpecialFormFn>>,
@@ -74,7 +75,7 @@ impl Evaluator {
         self.native_registry.register(k, creator);
     }
 
-    pub fn create_native_object(&self, name: &str, args: &[Exp]) -> Result<Exp> {
+    pub fn create_native_object(&self, name: &str, args: &[Exp]) -> EvalResult {
         self.native_registry.create(name, args)
     }
 
@@ -92,27 +93,23 @@ impl Evaluator {
             .store(value, std::sync::atomic::Ordering::Release);
     }
 
-    pub fn eval(&self, exp: &Exp, env: &SharedEnv) -> Result<Exp> {
+    pub fn eval(&self, exp: &Exp, env: &SharedEnv) -> EvalResult {
         if self.trace.load(std::sync::atomic::Ordering::Relaxed) {
             println!("trace eval: {}", exp);
         }
 
         match exp {
-            Exp::Nil => Ok(exp.clone()),
-            Exp::Number(_) => Ok(exp.clone()),
-            Exp::Bool(_) => Ok(exp.clone()),
-            Exp::String(_) => Ok(exp.clone()),
-            Exp::Native(_) => Ok(exp.clone()),
+            Exp::Nil | Exp::Number(_) | Exp::Bool(_) | Exp::String(_) | Exp::Native(_) => {
+                Ok(EvalFlow::Value(exp.clone()))
+            }
             Exp::Function(_) => Err(Error::from("unexpected form: Function")),
             Exp::Lambda(_) => err!("unexpected form: lambda"),
             Exp::Macro(_) => err!("unexpected form: macro"),
             Exp::DottedList(_, _) => err!("unexpected form: dotted list"),
-            Exp::Symbol(k) => env
-                .lookup(k)
-                .ok_or(Error::Reason(format!("unexpected symbol '{}'", k))),
+            Exp::Symbol(k) => Ok(env.try_lookup(k)?.value_flow()),
             Exp::List(list) => {
                 let Some(first_form) = list.first() else {
-                    ok!(Exp::Nil);
+                    return Ok(EvalFlow::Value(Exp::Nil));
                 };
                 let args = &list[1..];
                 if let Exp::Symbol(k) = first_form
@@ -122,7 +119,7 @@ impl Evaluator {
                 }
 
                 let first_eval = self.eval(first_form, env)?;
-                self.apply(first_eval, args, env)
+                self.apply(first_eval.try_unwrap()?, args, env)
             }
             #[cfg(feature = "async")]
             Exp::Future(_) => err!("unexpected form: future"),
@@ -131,9 +128,9 @@ impl Evaluator {
         }
     }
 
-    pub fn apply(&self, exp: Exp, args: &[Exp], env: &SharedEnv) -> Result<Exp> {
+    pub fn apply(&self, exp: Exp, args: &[Exp], env: &SharedEnv) -> EvalResult {
         match exp {
-            Exp::Function(f) => f(&self.eval_form(args, env)?, env, self),
+            Exp::Function(f) => Ok(f(&self.eval_form(args, env)?, env, self)?),
             Exp::Lambda(lambda) => self.apply_lambda(lambda, args, env),
             Exp::Macro(lambda) => self.apply_macro(lambda, args, env),
             _ => err!("first form must be function, lambda or macro"),
@@ -141,43 +138,50 @@ impl Evaluator {
     }
 
     pub fn eval_form(&self, args: &[Exp], env: &SharedEnv) -> Result<Vec<Exp>> {
-        args.iter().map(|x| self.eval(x, env)).collect()
+        Ok(args
+            .iter()
+            .map(|x| self.eval(x, env))
+            .collect::<Result<Vec<EvalFlow>>>()?
+            .iter()
+            .map(EvalFlow::try_unwrap)
+            .collect::<Result<Vec<Exp>>>()?)
     }
 
-    fn apply_lambda(&self, lambda: LambdaExp, args: &[Exp], env: &SharedEnv) -> Result<Exp> {
-        let keys = parse_list_of_symbol_strings(&lambda.params_exp)?;
-        if keys.len() != args.len() {
-            err!(format!(
-                "expected {} arguments, got {}",
-                keys.len(),
-                args.len()
-            ))
-        }
+    fn apply_lambda(&self, lambda: LambdaExp, args: &[Exp], env: &SharedEnv) -> EvalResult {
         let values = self.eval_form(args, env)?;
-        let child = Env::extend(env.clone(), &keys, &values);
+        let child = self.env_extend(&lambda.params_exp, &values, env)?;
         self.eval(&lambda.body_exp, &child)
     }
 
-    fn apply_macro(&self, lambda: LambdaExp, args: &[Exp], env: &SharedEnv) -> Result<Exp> {
+    fn apply_macro(&self, lambda: LambdaExp, args: &[Exp], env: &SharedEnv) -> EvalResult {
         let expanded = self.expand_macro(lambda, args, env)?;
-        self.eval(&expanded, env)
+        self.eval(&expanded.try_unwrap()?, env)
     }
 
-    pub fn expand_macro(&self, lambda: LambdaExp, args: &[Exp], env: &SharedEnv) -> Result<Exp> {
-        let is_dotted = lambda.params_exp.is_dotted_list();
-        let keys = parse_list_of_symbol_strings(&lambda.params_exp)?;
-        let child = if is_dotted {
-            Env::extend_dotted(env.clone(), &keys, args)
+    pub fn expand_macro(&self, lambda: LambdaExp, args: &[Exp], env: &SharedEnv) -> EvalResult {
+        let child = self.env_extend(&lambda.params_exp, args, env)?;
+        self.eval(&lambda.body_exp, &child)
+    }
+
+    pub fn env_extend(
+        &self,
+        params: &Shared<Exp>,
+        args: &[Exp],
+        env: &SharedEnv,
+    ) -> Result<SharedEnv> {
+        let is_dotted = params.is_dotted_list();
+        let keys = parse_list_of_symbol_strings(params)?;
+        if is_dotted {
+            Ok(Env::extend_dotted(env.clone(), &keys, args))
         } else if keys.len() == args.len() {
-            Env::extend(env.clone(), &keys, args)
+            Ok(Env::extend(env.clone(), &keys, args))
         } else {
             err!(format!(
                 "expected {} arguments, got {}",
                 keys.len(),
                 args.len()
             ))
-        };
-        self.eval(&lambda.body_exp, &child)
+        }
     }
 
     pub fn eval_quasiquote(&self, exp: &Exp, env: &SharedEnv) -> Result<(Exp, bool)> {
@@ -191,14 +195,11 @@ impl Evaluator {
                         self.eval_quasiquote(&list[1], env)
                     }
                     Exp::Symbol(s) if s == "unquote" => {
-                        // unquote のみ評価
-                        Ok((self.eval(&list[1], env)?, false))
+                        Ok((self.eval(&list[1], env)?.try_unwrap()?, false))
                     }
                     Exp::Symbol(s) if s == "unquote-splicing" => {
-                        // splicing も同様
                         let val = self.eval(&list[1], env)?;
-                        if let Exp::List(items) = val {
-                            // Ok(Exp::List(items)) // ここではまだリスト化
+                        if let Exp::List(items) = val.try_unwrap()? {
                             Ok((Exp::List(items), true))
                         } else {
                             err!("unquote-splicing requires list")
@@ -219,14 +220,9 @@ impl Evaluator {
                             }
                         }
                         Ok((Exp::List(new_list), false))
-                        // for item in list {
-                        //     new_list.push(self.eval_quasiquote(item, env)?);
-                        // }
-                        // Ok(Exp::List(new_list))
                     }
                 }
             }
-            // _ => Ok(exp.clone()), // シンボルや数値はそのまま
             _ => Ok((exp.clone(), false)),
         }
     }

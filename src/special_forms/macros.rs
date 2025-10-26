@@ -1,8 +1,8 @@
 use crate::{
     err,
-    error::Result,
     evaluator::Evaluator,
     expression::Exp,
+    flow::EvalResult,
     lambda::LambdaExp,
     typedef::{Shared, SharedEnv},
 };
@@ -11,7 +11,7 @@ pub fn register(eval: &Evaluator) {
     eval.register_special_form("define-macro", define_macro_impl);
 }
 
-fn define_macro_impl(args: &[Exp], env: &SharedEnv, _: &Evaluator) -> Result<Exp> {
+fn define_macro_impl(args: &[Exp], env: &SharedEnv, _: &Evaluator) -> EvalResult {
     if args.len() != 3 {
         err!("define-macro takes 3 arguments: name, args, and body")
     }
@@ -26,5 +26,5 @@ fn define_macro_impl(args: &[Exp], env: &SharedEnv, _: &Evaluator) -> Result<Exp
     }
 
     let lambda = LambdaExp::new(Shared::new(args[1].clone()), Shared::new(args[2].clone()));
-    Ok(env.define(name, Exp::Macro(lambda)))
+    Ok(env.define(name, Exp::Macro(lambda)).value_flow())
 }

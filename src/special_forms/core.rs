@@ -1,9 +1,9 @@
 use crate::{
     environment::Env,
     err,
-    error::Result,
     evaluator::Evaluator,
     expression::Exp,
+    flow::{EvalFlow, EvalResult},
     lambda::LambdaExp,
     typedef::{Shared, SharedEnv},
 };
@@ -26,7 +26,7 @@ pub fn register(eval: &Evaluator) {
     }
 }
 
-fn define_impl(args: &[Exp], env: &SharedEnv, eval: &Evaluator) -> Result<Exp> {
+fn define_impl(args: &[Exp], env: &SharedEnv, eval: &Evaluator) -> EvalResult {
     if args.len() != 2 {
         err!("define cam only two forms")
     }
@@ -36,10 +36,10 @@ fn define_impl(args: &[Exp], env: &SharedEnv, eval: &Evaluator) -> Result<Exp> {
     };
 
     let v = eval.eval(args.get(1).unwrap(), env)?;
-    Ok(env.define(k, v))
+    Ok(env.define(k, v.try_unwrap()?).value_flow())
 }
 
-fn assign_impl(args: &[Exp], env: &SharedEnv, eval: &Evaluator) -> Result<Exp> {
+fn assign_impl(args: &[Exp], env: &SharedEnv, eval: &Evaluator) -> EvalResult {
     if args.len() != 2 {
         err!("assign cam only two forms")
     }
@@ -49,10 +49,10 @@ fn assign_impl(args: &[Exp], env: &SharedEnv, eval: &Evaluator) -> Result<Exp> {
     };
 
     let v = eval.eval(args.get(1).unwrap(), env)?;
-    Ok(env.assign(k, v))
+    Ok(env.assign(k, v.try_unwrap()?).value_flow())
 }
 
-fn lambda_impl(args: &[Exp], _: &SharedEnv, _: &Evaluator) -> Result<Exp> {
+fn lambda_impl(args: &[Exp], _: &SharedEnv, _: &Evaluator) -> EvalResult {
     if args.len() != 2 {
         err!("lambda definition can only have two forms")
     }
@@ -67,39 +67,49 @@ fn lambda_impl(args: &[Exp], _: &SharedEnv, _: &Evaluator) -> Result<Exp> {
     Ok(Exp::Lambda(LambdaExp::new(
         Shared::new(params_exp.clone()),
         Shared::new(body_exp.clone()),
-    )))
+    ))
+    .value_flow())
 }
 
-pub fn begin_impl(args: &[Exp], env: &SharedEnv, eval: &Evaluator) -> Result<Exp> {
+pub fn begin_impl(args: &[Exp], env: &SharedEnv, eval: &Evaluator) -> EvalResult {
     let mut last = Exp::Nil;
 
+    // for form in args {
+    //     let val = eval.eval(form, env)?;
+    //     if val.is_control_flow() {
+    //         ok!(val)
+    //     }
+    //     last = val;
+    // }
+    //
     for form in args {
-        let val = eval.eval(form, env)?;
-        // if val.is_control_flow() {
-        //     ok!(val)
-        // }
-        last = val;
+        match eval.eval(form, env)? {
+            EvalFlow::Value(v) => last = v,
+            flow @ EvalFlow::Break => return Ok(flow),
+            flow @ EvalFlow::Continue => return Ok(flow),
+            flow @ EvalFlow::Return(_) => return Ok(flow),
+        }
     }
 
-    Ok(last)
+    Ok(last.value_flow())
 }
 
-fn quote_impl(args: &[Exp], _: &SharedEnv, _: &Evaluator) -> Result<Exp> {
+fn quote_impl(args: &[Exp], _: &SharedEnv, _: &Evaluator) -> EvalResult {
     if args.len() != 1 {
         err!("quote can only have one form")
     } else {
-        Ok(args[0].clone())
+        Ok(args[0].clone().value_flow())
     }
 }
 
-fn quasiquote_impl(args: &[Exp], env: &SharedEnv, eval: &Evaluator) -> Result<Exp> {
+fn quasiquote_impl(args: &[Exp], env: &SharedEnv, eval: &Evaluator) -> EvalResult {
     if args.len() != 1 {
         err!("quasiquote can only have one form")
     }
 
     // eval.eval_quasiquote(&args[0], env)
     let (exp, _splicing) = eval.eval_quasiquote(&args[0], env)?;
-    Ok(exp)
+    Ok(exp.value_flow())
     // if splicing {
     //     let Exp::List(items) = exp else {
     //         unreachable!();
@@ -110,7 +120,7 @@ fn quasiquote_impl(args: &[Exp], env: &SharedEnv, eval: &Evaluator) -> Result<Ex
     // }
 }
 
-fn for_impl(args: &[Exp], env: &SharedEnv, eval: &Evaluator) -> Result<Exp> {
+fn for_impl(args: &[Exp], env: &SharedEnv, eval: &Evaluator) -> EvalResult {
     if args.len() < 2 {
         err!("for expects at least 2 arguments")
     }
@@ -124,60 +134,63 @@ fn for_impl(args: &[Exp], env: &SharedEnv, eval: &Evaluator) -> Result<Exp> {
         err!("binding list must start with a symbol")
     };
 
-    let Exp::List(values) = eval.eval(&binding_pair[1], env)? else {
+    let EvalFlow::Value(Exp::List(values)) = eval.eval(&binding_pair[1], env)? else {
         err!("binding list must end with a list")
     };
     let mut result = Exp::Nil;
     let new_env = Env::new_child(Shared::clone(env));
     for value in values {
         new_env.define(k, value.clone());
-        result = eval.eval(&args[1], &new_env)?;
+        // result = eval.eval(&args[1], &new_env)?;
+        // match eval.eval_with_flow(&args[1], &new_env)? {
+        //     EvalFlow::Value(_) => continue,
+        // }
+        match begin_impl(&args[1..], &new_env, eval)? {
+            EvalFlow::Value(exp) => result = exp,
+            EvalFlow::Continue => continue,
+            EvalFlow::Break => return Ok(Exp::Nil.value_flow()),
+            flow @ EvalFlow::Return(_) => return Ok(flow),
+        }
     }
-    Ok(result)
+    Ok(result.value_flow())
 }
 
-fn gensym_impl(_args: &[Exp], _: &SharedEnv, eval: &Evaluator) -> Result<Exp> {
-    Ok(Exp::Symbol(format!("__GEN_SYM__{}", eval.get_gensym_id())))
+fn gensym_impl(_args: &[Exp], _: &SharedEnv, eval: &Evaluator) -> EvalResult {
+    Ok(Exp::Symbol(format!("__GEN_SYM__{}", eval.get_gensym_id())).value_flow())
 }
 
 #[cfg(feature = "async")]
-fn async_impl(args: &[Exp], env: &SharedEnv, eval: &Evaluator) -> Result<Exp> {
+fn async_impl(args: &[Exp], env: &SharedEnv, eval: &Evaluator) -> EvalResult {
     use crate::future::FutureExp;
 
     if args.len() != 1 {
         err!("async can only have one form")
     }
 
-    Ok(Exp::Future(FutureExp::new(&args[0], env, eval)))
+    Ok(Exp::Future(FutureExp::new(&args[0], env, eval)).value_flow())
 }
 
 #[cfg(feature = "async")]
-fn spawn_impl(args: &[Exp], env: &SharedEnv, eval: &Evaluator) -> Result<Exp> {
+fn spawn_impl(args: &[Exp], env: &SharedEnv, eval: &Evaluator) -> EvalResult {
     use crate::task::TaskExp;
 
     if args.len() != 1 {
         err!("spawn can only have one form")
     }
 
-    // let Exp::Future(future) = &args[0] else {
-    //     err!("spawn can only have one future")
-    // };
-
-    // Ok(Exp::Task(TaskExp::new(future.spawn())))
-
     let handle = match &args[0] {
         Exp::Future(future) => future.spawn(),
         other => match eval.eval(other, env)? {
-            Exp::Future(future) => future.spawn(),
+            EvalFlow::Value(Exp::Future(future)) => future.spawn(),
             _ => err!("spawn can only have one future"),
         },
     };
 
-    Ok(Exp::Task(TaskExp::new(handle)))
+    Ok(Exp::Task(TaskExp::new(handle)).value_flow())
 }
 
 #[cfg(feature = "async")]
-fn await_impl(args: &[Exp], env: &SharedEnv, eval: &Evaluator) -> Result<Exp> {
+fn await_impl(args: &[Exp], env: &SharedEnv, eval: &Evaluator) -> EvalResult {
     if args.len() != 1 {
         err!("await can only have one form")
     }
@@ -196,14 +209,14 @@ fn await_impl(args: &[Exp], env: &SharedEnv, eval: &Evaluator) -> Result<Exp> {
                 } else {
                     f.sync_await()
                 }?;
-                env.assign(k, result.clone());
+                env.assign(k, result.try_unwrap()?);
                 Ok(result)
             } else {
-                Ok(value)
+                Ok(value.value_flow())
             }
         }
         other => match eval.eval(other, env)? {
-            Exp::Task(task) => {
+            EvalFlow::Value(Exp::Task(task)) => {
                 if tokio::runtime::Handle::try_current().is_ok() {
                     tokio::task::block_in_place(|| task.sync_await())
                 } else {
