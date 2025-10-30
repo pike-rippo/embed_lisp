@@ -12,7 +12,7 @@ pub fn register(eval: &Evaluator) {
 }
 
 fn define_macro_impl(args: &[Exp], env: &SharedEnv, _: &Evaluator) -> EvalResult {
-    if args.len() != 3 {
+    if args.len() < 3 {
         err!("define-macro takes 3 arguments: name, args, and body")
     }
 
@@ -25,6 +25,6 @@ fn define_macro_impl(args: &[Exp], env: &SharedEnv, _: &Evaluator) -> EvalResult
         err!("define-macro expected args is list or dotted-list");
     }
 
-    let lambda = LambdaExp::new(Shared::new(args[1].clone()), Shared::new(args[2].clone()));
+    let lambda = LambdaExp::new(Shared::new(args[1].clone()), Vec::from(&args[2..]));
     Ok(env.define(name, Exp::Macro(lambda)).value_flow())
 }

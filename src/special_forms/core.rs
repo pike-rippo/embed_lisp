@@ -54,20 +54,18 @@ fn assign_impl(args: &[Exp], env: &SharedEnv, eval: &Evaluator) -> EvalResult {
 }
 
 fn lambda_impl(args: &[Exp], _: &SharedEnv, _: &Evaluator) -> EvalResult {
-    if args.len() != 2 {
+    if args.len() < 2 {
         err!("lambda definition can only have two forms")
     }
 
     let Some(params_exp) = args.first() else {
         err!("expected args form")
     };
-    let Some(body_exp) = args.get(1) else {
-        err!("expected body exp")
-    };
+    let body = &args[1..];
 
     Ok(Exp::Lambda(LambdaExp::new(
         Shared::new(params_exp.clone()),
-        Shared::new(body_exp.clone()),
+        Vec::from(body),
     ))
     .value_flow())
 }

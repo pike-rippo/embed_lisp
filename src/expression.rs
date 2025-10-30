@@ -11,6 +11,11 @@ use crate::{
 #[cfg(feature = "async")]
 use crate::{future::FutureExp, task::TaskExp};
 
+#[cfg(not(feature = "async"))]
+pub type SharedNativeObject = Shared<dyn NativeObject>;
+#[cfg(feature = "async")]
+pub type SharedNativeObject = Shared<dyn NativeObject + Send + Sync>;
+
 pub type BuiltinFunction = fn(&[Exp], &SharedEnv, &Evaluator) -> EvalResult;
 
 #[derive(Clone)]
@@ -25,10 +30,7 @@ pub enum Exp {
     Function(BuiltinFunction),
     Lambda(LambdaExp),
     Macro(LambdaExp),
-    #[cfg(not(feature = "async"))]
-    Native(Shared<dyn NativeObject>),
-    #[cfg(feature = "async")]
-    Native(Shared<dyn NativeObject + Send + Sync>),
+    Native(SharedNativeObject),
     #[cfg(feature = "async")]
     Future(FutureExp),
     #[cfg(feature = "async")]
@@ -71,7 +73,7 @@ impl std::fmt::Debug for Exp {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Exp::Native(obj) => write!(f, "<native:{}>", obj.get_type_name()),
-            other => write!(f, "{:?}", other),
+            other => write!(f, "{}", other),
         }
     }
 }
@@ -105,7 +107,7 @@ impl std::fmt::Display for Exp {
                 }
             }
             Self::DottedList(args, tail) => format!(
-                "({} ...{})",
+                "({} ... {})",
                 args.iter()
                     .map(|e| format!("{}", e))
                     .collect::<Vec<String>>()
@@ -115,10 +117,28 @@ impl std::fmt::Display for Exp {
             Self::Symbol(s) => s.clone(),
             Self::Function(_) => "Function".to_string(),
             Self::Lambda(lambda) => {
-                format!("Lambda {{ {} -> {} }}", lambda.params_exp, lambda.body_exp)
+                format!(
+                    "Lambda {{ {} -> {} }}",
+                    lambda.params_exp,
+                    lambda
+                        .body_exp
+                        .iter()
+                        .map(|e| format!("{}", e))
+                        .collect::<Vec<String>>()
+                        .join(" ")
+                )
             }
             Self::Macro(lambda) => {
-                format!("Macro {{ {} -> {} }}", lambda.params_exp, lambda.body_exp)
+                format!(
+                    "Macro {{ {} -> {} }}",
+                    lambda.params_exp,
+                    lambda
+                        .body_exp
+                        .iter()
+                        .map(|e| format!("{}", e))
+                        .collect::<Vec<String>>()
+                        .join(" ")
+                )
             }
             Self::Native(native) => format!("Native {{ {} }}", native.get_type_name()),
             #[cfg(feature = "async")]
