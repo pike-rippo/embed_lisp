@@ -1,11 +1,11 @@
 use std::vec;
 
 use crate::{
+    environment::SharedEnv,
     error::{Error, SyntaxError},
     evaluator::Evaluator,
     expression::Exp,
     flow::EvalResult,
-    typedef::SharedEnv,
 };
 
 // Exp::Function(|args: &[Exp], _: &SharedEnv, _: &Evaluator| -> EvalResult {})

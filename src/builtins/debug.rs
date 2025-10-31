@@ -1,5 +1,6 @@
 use crate::{
-    error::SyntaxError, evaluator::Evaluator, expression::Exp, flow::EvalResult, typedef::SharedEnv,
+    environment::SharedEnv, error::SyntaxError, evaluator::Evaluator, expression::Exp,
+    flow::EvalResult,
 };
 
 pub fn register(env: &SharedEnv) {

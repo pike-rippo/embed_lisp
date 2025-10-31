@@ -1,11 +1,11 @@
 use crate::{
-    environment::Env,
+    environment::{Env, SharedEnv},
     error::SyntaxError,
     evaluator::Evaluator,
     expression::Exp,
     flow::EvalResult,
     special_forms::core::begin_impl,
-    typedef::{Shared, SharedEnv},
+    typedef::Shared,
 };
 
 pub fn register(eval: &Evaluator) {

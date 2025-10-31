@@ -1,10 +1,10 @@
 use crate::{
+    environment::SharedEnv,
     error::SyntaxError,
     evaluator::Evaluator,
     expression::Exp,
     flow::{EvalFlow, EvalResult},
     special_forms::core::begin_impl,
-    typedef::SharedEnv,
 };
 
 /// 'if', 'cond', 'and', 'or'

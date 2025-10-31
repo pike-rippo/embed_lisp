@@ -3,12 +3,13 @@ use std::hash::{Hash, Hasher};
 #[cfg(feature = "async")]
 use crate::{Error, future::FutureExp, task::TaskExp};
 use crate::{
+    environment::SharedEnv,
     error::Result,
     evaluator::Evaluator,
     flow::{EvalFlow, EvalResult},
     lambda::LambdaExp,
     native::NativeObject,
-    typedef::{Shared, SharedEnv},
+    typedef::Shared,
 };
 
 #[cfg(not(feature = "async"))]

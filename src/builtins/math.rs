@@ -1,9 +1,9 @@
 use crate::{
+    environment::SharedEnv,
     error::{Result, SyntaxError},
     evaluator::Evaluator,
     expression::Exp,
     flow::EvalResult,
-    typedef::SharedEnv,
 };
 
 /// '+', '+', '-', '/'

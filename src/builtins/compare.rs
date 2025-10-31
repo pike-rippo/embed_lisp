@@ -1,10 +1,10 @@
 use crate::{
     builtins::math::parse_list_of_floats,
+    environment::SharedEnv,
     error::{Error, SyntaxError},
     evaluator::Evaluator,
     expression::Exp,
     flow::{EvalFlow, EvalResult},
-    typedef::SharedEnv,
 };
 
 macro_rules! ensure_tonicity {

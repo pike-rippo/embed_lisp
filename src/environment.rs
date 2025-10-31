@@ -6,8 +6,10 @@ use crate::{
     builtins::register_all,
     error::{Result, SyntaxError},
     expression::Exp,
-    typedef::{Shared, SharedEnv},
+    typedef::Shared,
 };
+
+pub type SharedEnv = Shared<Env>;
 
 #[derive(Debug)]
 pub struct Env {

@@ -8,7 +8,7 @@ use parking_lot::RwLock;
 
 use crate::{
     GENESYM_COUNTER,
-    environment::Env,
+    environment::{Env, SharedEnv},
     error::{Result, SyntaxError},
     expression::Exp,
     flow::{EvalFlow, EvalResult},
@@ -16,7 +16,7 @@ use crate::{
     native,
     native_registry::{NativeCreator, NativeRegistry},
     special_forms::{self, begin_impl},
-    typedef::{Shared, SharedEnv},
+    typedef::Shared,
 };
 
 pub type SpecialFormFn = fn(&[Exp], &SharedEnv, &Evaluator) -> EvalResult;

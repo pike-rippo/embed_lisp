@@ -1,10 +1,6 @@
 use crate::{
-    error::SyntaxError,
-    evaluator::Evaluator,
-    expression::Exp,
-    flow::EvalResult,
-    lambda::LambdaExp,
-    typedef::{Shared, SharedEnv},
+    environment::SharedEnv, error::SyntaxError, evaluator::Evaluator, expression::Exp,
+    flow::EvalResult, lambda::LambdaExp, typedef::Shared,
 };
 
 pub fn register(eval: &Evaluator) {

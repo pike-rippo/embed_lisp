@@ -1,11 +1,12 @@
 use crate::{
     environment::Env,
+    environment::SharedEnv,
     error::SyntaxError,
     evaluator::Evaluator,
     expression::Exp,
     flow::{EvalFlow, EvalResult},
     lambda::LambdaExp,
-    typedef::{Shared, SharedEnv},
+    typedef::Shared,
 };
 /// 'define', 'assign', 'lambda', 'begin', 'quote', 'for'
 pub fn register(eval: &Evaluator) {
@@ -18,6 +19,7 @@ pub fn register(eval: &Evaluator) {
     eval.register_special_form("for-each", for_each_impl);
     eval.register_special_form("loop", loop_impl);
     eval.register_special_form("gensym", gensym_impl);
+    eval.register_special_form("scope", scope_impl);
 
     #[cfg(feature = "async")]
     {
@@ -148,6 +150,11 @@ fn loop_impl(args: &[Exp], env: &SharedEnv, eval: &Evaluator) -> EvalResult {
 
 fn gensym_impl(_args: &[Exp], _: &SharedEnv, eval: &Evaluator) -> EvalResult {
     Ok(Exp::Symbol(format!("__GEN_SYM__{}", eval.get_gensym_id())).value_flow())
+}
+
+fn scope_impl(args: &[Exp], env: &SharedEnv, eval: &Evaluator) -> EvalResult {
+    let child = Env::new_child(env.clone());
+    begin_impl(args, &child, eval)
 }
 
 #[cfg(feature = "async")]

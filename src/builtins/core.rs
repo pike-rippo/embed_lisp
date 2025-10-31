@@ -1,12 +1,12 @@
 use std::time::Duration;
 
 use crate::{
+    environment::SharedEnv,
     error::SyntaxError,
     evaluator::Evaluator,
     expression::Exp,
     flow::{EvalFlow, EvalResult},
     parser::Parser,
-    typedef::SharedEnv,
 };
 
 /// 'call', 'range', 'type-of', 'parse', 'eval'

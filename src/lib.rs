@@ -33,7 +33,11 @@ pub use expression::{BuiltinFunction, Exp};
 pub use native::NativeObject;
 pub use native_registry::NativeCreator;
 
-use crate::{environment::Env, flow::EvalResult, parser::Parser, typedef::SharedEnv};
+use crate::{
+    environment::{Env, SharedEnv},
+    flow::EvalResult,
+    parser::Parser,
+};
 
 pub struct Interpreter {
     parser: Parser,
