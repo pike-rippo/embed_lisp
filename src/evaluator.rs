@@ -9,8 +9,7 @@ use parking_lot::RwLock;
 use crate::{
     GENESYM_COUNTER,
     environment::Env,
-    err,
-    error::{Error, Result},
+    error::{Result, SyntaxError},
     expression::Exp,
     flow::{EvalFlow, EvalResult},
     lambda::LambdaExp,
@@ -102,10 +101,10 @@ impl Evaluator {
             Exp::Nil | Exp::Number(_) | Exp::Bool(_) | Exp::String(_) | Exp::Native(_) => {
                 Ok(EvalFlow::Value(exp.clone()))
             }
-            Exp::Function(_) => Err(Error::from("unexpected form: Function")),
-            Exp::Lambda(_) => err!("unexpected form: lambda"),
-            Exp::Macro(_) => err!("unexpected form: macro"),
-            Exp::DottedList(_, _) => err!("unexpected form: dotted list"),
+            Exp::Function(_) => Err(SyntaxError::unexpected_form("function")),
+            Exp::Lambda(_) => Err(SyntaxError::unexpected_form("lambda")),
+            Exp::Macro(_) => Err(SyntaxError::unexpected_form("macro")),
+            Exp::DottedList(_, _) => Err(SyntaxError::unexpected_form("dotted list")),
             Exp::Symbol(k) => Ok(env.try_lookup(k)?.value_flow()),
             Exp::List(list) => {
                 let Some(first_form) = list.first() else {
@@ -122,7 +121,7 @@ impl Evaluator {
                 self.apply(first_eval.try_unwrap()?, args, env)
             }
             #[cfg(feature = "async")]
-            Exp::Future(_) => err!("unexpected form: future"),
+            Exp::Future(_) => Err(SyntaxError::unexpected_form("future")),
             #[cfg(feature = "async")]
             Exp::Task(future) => future.get(),
         }
@@ -133,7 +132,7 @@ impl Evaluator {
             Exp::Function(f) => Ok(f(&self.eval_form(args, env)?, env, self)?),
             Exp::Lambda(lambda) => self.apply_lambda(lambda, args, env),
             Exp::Macro(lambda) => self.apply_macro(lambda, args, env),
-            _ => err!("first form must be function, lambda or macro"),
+            _ => Err(SyntaxError::unexpected_form("function, lambda or macro")),
         }
     }
 
@@ -179,11 +178,12 @@ impl Evaluator {
         } else if keys.len() == args.len() {
             Ok(Env::extend(env.clone(), &keys, args))
         } else {
-            err!(format!(
+            Err(SyntaxError::Reason(format!(
                 "expected {} arguments, got {}",
                 keys.len(),
                 args.len()
             ))
+            .into())
         }
     }
 
@@ -193,7 +193,11 @@ impl Evaluator {
                 match &list[0] {
                     Exp::Symbol(s) if s == "quasiquote" => {
                         if list.len() != 2 {
-                            err!("quasiquote expects one argument")
+                            return Err(SyntaxError::invalid_args_size(
+                                "quasiquote",
+                                1,
+                                list.len(),
+                            ));
                         }
                         self.eval_quasiquote(&list[1], env)
                     }
@@ -205,7 +209,7 @@ impl Evaluator {
                         if let Exp::List(items) = val.try_unwrap()? {
                             Ok((Exp::List(items), true))
                         } else {
-                            err!("unquote-splicing requires list")
+                            return Err(SyntaxError::invalid_args_type("unquote-splicing", "list"));
                         }
                     }
                     _ => {
@@ -237,24 +241,24 @@ pub fn parse_list_of_symbol_strings(form: &Shared<Exp>) -> Result<Vec<String>> {
             .iter()
             .map(|x| match x {
                 Exp::Symbol(s) => Ok(s.clone()),
-                _ => err!("expected symbol in the argument list"),
+                _ => return Err(SyntaxError::reason("expected symbol in the argument list")),
             })
             .collect(),
         Exp::DottedList(args, res) => {
             let Exp::Symbol(s) = res.deref() else {
-                err!("expected symbol in the argument list")
+                return Err(SyntaxError::reason("expected symbol in the argument list"));
             };
             let mut list = args
                 .iter()
                 .map(|e| match e {
                     Exp::Symbol(s) => Ok(s.clone()),
-                    _ => err!("expected symbol in the argument list"),
+                    _ => return Err(SyntaxError::reason("expected symbol in the argument list")),
                 })
                 .collect::<Result<Vec<String>>>()?;
 
             list.push(s.clone());
             Ok(list)
         }
-        _ => err!("expected args form to be a list"),
+        _ => return Err(SyntaxError::reason("expected args form to be a list")),
     }
 }

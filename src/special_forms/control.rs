@@ -1,5 +1,5 @@
 use crate::{
-    err,
+    error::SyntaxError,
     evaluator::Evaluator,
     expression::Exp,
     flow::{EvalFlow, EvalResult},
@@ -16,28 +16,26 @@ pub fn register(eval: &Evaluator) {
 }
 
 fn if_impl(args: &[Exp], env: &SharedEnv, eval: &Evaluator) -> EvalResult {
-    let Some(test_form) = args.first() else {
-        err!("expected test form")
-    };
-    let test_eval = eval.eval(test_form, env)?;
-    let form_idx = if test_eval.try_unwrap()?.is_truthy() {
+    if args.len() != 3 {
+        return Err(SyntaxError::invalid_args_size("if", 3, args.len()));
+    }
+
+    let idx = if eval.eval(&args[0], env)?.try_unwrap()?.is_truthy() {
         1
     } else {
         2
     };
-    let Some(res_form) = args.get(form_idx) else {
-        err!(format!("expected form idx ={}", form_idx))
-    };
-    eval.eval(res_form, env)
+
+    eval.eval(&args[idx], env)
 }
 
 fn cond_impl(args: &[Exp], env: &SharedEnv, eval: &Evaluator) -> EvalResult {
     for clause in args {
         let Exp::List(items) = clause else {
-            err!("cond clause must be a list")
+            return Err(SyntaxError::reason("cond clause must be a list"));
         };
         if items.is_empty() {
-            err!("cond clause must not be empty")
+            return Err(SyntaxError::reason("cond clause must not be empty"));
         }
 
         let condition = &items[0];

@@ -1,5 +1,7 @@
 use std::hash::{Hash, Hasher};
 
+#[cfg(feature = "async")]
+use crate::{Error, future::FutureExp, task::TaskExp};
 use crate::{
     error::Result,
     evaluator::Evaluator,
@@ -8,8 +10,6 @@ use crate::{
     native::NativeObject,
     typedef::{Shared, SharedEnv},
 };
-#[cfg(feature = "async")]
-use crate::{future::FutureExp, task::TaskExp};
 
 #[cfg(not(feature = "async"))]
 pub type SharedNativeObject = Shared<dyn NativeObject>;
@@ -244,7 +244,7 @@ impl Exp {
         #[cfg(not(feature = "async"))]
         match self {
             Exp::Native(_) | Exp::Function(_) | Exp::Lambda(_) | Exp::Macro(_) => {
-                Err("invalid key type".into())
+                Err(Error::reason("invalid key type"))
             }
             _ => Ok(()),
         }
@@ -256,7 +256,7 @@ impl Exp {
             | Exp::Lambda(_)
             | Exp::Macro(_)
             | Exp::Future(_)
-            | Exp::Task(_) => Err("invalid key type".into()),
+            | Exp::Task(_) => Err(Error::reason("invalid key type")),
             _ => Ok(()),
         }
     }

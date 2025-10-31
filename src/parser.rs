@@ -1,5 +1,5 @@
 use crate::{
-    error::{Error, Result},
+    error::{ParseError, Result},
     expression::Exp,
     replacer::Replacer,
     typedef::Shared,
@@ -44,10 +44,11 @@ impl Parser {
 fn tokenize(input: &[String]) -> Result<(Exp, &[String])> {
     let (front, rest) = input
         .split_first()
-        .ok_or(Error::from("could not get token"))?;
+        .ok_or(ParseError::reason("could not get token"))?;
     match &front[..] {
         "(" => read_seq(rest),
-        ")" => Err(Error::from("unexpected ')'")),
+        // ")" => Err(Error::from("unexpected ')'")),
+        ")" => Err(ParseError::unexpected_token(")")),
         "'" => {
             let (quoted_exp, new_rest) = tokenize(rest)?;
             Ok((
@@ -87,7 +88,9 @@ fn read_seq(input: &[String]) -> Result<(Exp, &[String])> {
     let mut res: Vec<Exp> = vec![];
     let mut xs = input;
     loop {
-        let (next, rest) = xs.split_first().ok_or(Error::from("could not find ')'"))?;
+        let (next, rest) = xs
+            .split_first()
+            .ok_or(ParseError::reason("could not find ')'"))?;
 
         if next == ")" {
             return Ok((Exp::List(res), rest));
@@ -95,12 +98,12 @@ fn read_seq(input: &[String]) -> Result<(Exp, &[String])> {
             let (tail, after) = tokenize(rest)?;
             let (maybe_close, remaining) = after
                 .split_first()
-                .ok_or(Error::from("expected ')' after dotted list"))?;
+                .ok_or(ParseError::reason("expected ')' after dotted list"))?;
 
             return if maybe_close == ")" {
                 Ok((Exp::DottedList(res, Shared::new(tail)), remaining))
             } else {
-                Err("expected ')' after dotted list".into())
+                Err(ParseError::reason("expected ')' after dotted list"))
             };
         }
 
@@ -108,9 +111,9 @@ fn read_seq(input: &[String]) -> Result<(Exp, &[String])> {
         if next == "." {
             println!(".");
             res.insert(res.len() - 1, Exp::Symbol("call".to_string()));
-            let method = rest.first().ok_or(Error::from("unexpected '.'"))?;
+            let method = rest.first().ok_or(ParseError::unexpected_token("."))?;
             res.push(Exp::String(method.to_string()));
-            xs = rest.get(1..).ok_or(Error::from("unexpected '.'"))?;
+            xs = rest.get(1..).ok_or(ParseError::unexpected_token("."))?;
             if xs.first().is_some_and(|e| e == ")") {
                 return Ok((Exp::List(res), &xs[1..]));
             }

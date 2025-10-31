@@ -42,14 +42,14 @@ impl TaskExp {
     }
 
     pub fn get(&self) -> EvalResult {
-        Err(Error::from("Pending"))
+        Err(Error::reason("Pending"))
     }
 
     pub fn sync_await(&self) -> EvalResult {
-        use crate::{GLOBAL_RUNTIME, err};
+        use crate::GLOBAL_RUNTIME;
 
         let Some(handle) = self.handle.blocking_lock().take() else {
-            err!("no handle")
+            return Err(Error::reason("no handle"));
         };
 
         let result = GLOBAL_RUNTIME.block_on(handle);
@@ -58,7 +58,7 @@ impl TaskExp {
             Ok(r) => r,
             Err(e) => {
                 println!("{}", e);
-                err!("join error")
+                Err(Error::reason("join error"))
             }
         }
     }
@@ -68,8 +68,8 @@ impl TaskExp {
             .lock()
             .await
             .take()
-            .ok_or_else(|| Error::from("no handle"))?
+            .ok_or_else(|| Error::reason("no handle"))?
             .await
-            .map_err(|_| Error::from("join error"))?
+            .map_err(|_| Error::reason("join error"))?
     }
 }

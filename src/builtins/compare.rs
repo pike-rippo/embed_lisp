@@ -1,7 +1,6 @@
 use crate::{
     builtins::math::parse_list_of_floats,
-    err,
-    error::Error,
+    error::{Error, SyntaxError},
     evaluator::Evaluator,
     expression::Exp,
     flow::{EvalFlow, EvalResult},
@@ -9,9 +8,9 @@ use crate::{
 };
 
 macro_rules! ensure_tonicity {
-    ($check_fn:expr) => {{
+    ($name:expr, $check_fn:expr) => {{
         |args: &[Exp], _: &SharedEnv, _: &Evaluator| -> EvalResult {
-            let floats = parse_list_of_floats(args)?;
+            let floats = parse_list_of_floats($name, args)?;
             let first = floats
                 .first()
                 .ok_or(Error::Reason("expected at least one number".to_string()))?;
@@ -29,21 +28,22 @@ macro_rules! ensure_tonicity {
 //ok!(f(first, rest))
 /// '=', '>', '>=', '<', '<=', 'null?', 'eq?'
 pub fn register(env: &SharedEnv) {
-    env.define("=", Exp::Function(ensure_tonicity!(|a, b| a == b)));
-    env.define(">", Exp::Function(ensure_tonicity!(|a, b| a > b)));
-    env.define(">=", Exp::Function(ensure_tonicity!(|a, b| a >= b)));
-    env.define("<", Exp::Function(ensure_tonicity!(|a, b| a < b)));
-    env.define("<=", Exp::Function(ensure_tonicity!(|a, b| a <= b)));
+    env.define("=", Exp::Function(ensure_tonicity!("=", |a, b| a == b)));
+    env.define(">", Exp::Function(ensure_tonicity!(">", |a, b| a > b)));
+    env.define(">=", Exp::Function(ensure_tonicity!(">=", |a, b| a >= b)));
+    env.define("<", Exp::Function(ensure_tonicity!("<", |a, b| a < b)));
+    env.define("<=", Exp::Function(ensure_tonicity!("<=", |a, b| a <= b)));
     env.define("null?", Exp::Function(null_impl));
     env.define("eq?", Exp::Function(eq_impl));
 }
 
 fn null_impl(args: &[Exp], _: &SharedEnv, _: &Evaluator) -> EvalResult {
     if args.len() != 1 {
-        err!("null? takes exactly one argument")
+        // err!("null? takes exactly one argument")
+        return Err(SyntaxError::invalid_args_size("null?", 0, args.len()));
     }
     let Exp::List(list) = &args[0] else {
-        err!("null? expects a list")
+        return Err(SyntaxError::invalid_args_type_nth("null?", "list", 1));
     };
     // ok!(list.is_empty())
     Ok(EvalFlow::Value(Exp::Bool(list.is_empty())))
@@ -51,7 +51,8 @@ fn null_impl(args: &[Exp], _: &SharedEnv, _: &Evaluator) -> EvalResult {
 
 fn eq_impl(args: &[Exp], _: &SharedEnv, _: &Evaluator) -> EvalResult {
     if args.len() != 2 {
-        err!("eq? takes exactly two arguments")
+        // err!("eq? takes exactly two arguments")
+        return Err(SyntaxError::invalid_args_size("eq?", 2, args.len()));
     }
     // ok!(args[0] == args[1])
     Ok(EvalFlow::Value(Exp::Bool(args[0] == args[1])))

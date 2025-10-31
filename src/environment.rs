@@ -3,9 +3,8 @@ use std::collections::HashMap;
 use parking_lot::RwLock;
 
 use crate::{
-    Error,
     builtins::register_all,
-    error::Result,
+    error::{Result, SyntaxError},
     expression::Exp,
     typedef::{Shared, SharedEnv},
 };
@@ -13,7 +12,7 @@ use crate::{
 #[derive(Debug)]
 pub struct Env {
     current: RwLock<HashMap<String, Exp>>,
-    outer: Option<SharedEnv>,
+    parent: Option<SharedEnv>,
     level: u8,
 }
 
@@ -29,7 +28,7 @@ impl Env {
     pub fn builtin_env() -> SharedEnv {
         let env = Shared::new(Self {
             current: RwLock::new(HashMap::new()),
-            outer: None,
+            parent: None,
             level: 0,
         });
 
@@ -41,7 +40,7 @@ impl Env {
         let level = parent.level + 1;
         Shared::new(Self {
             current: RwLock::new(HashMap::new()),
-            outer: Some(parent),
+            parent: Some(parent),
             level,
         })
     }
@@ -78,7 +77,7 @@ impl Env {
     pub fn deep_copy(&self) -> SharedEnv {
         Shared::new(Self {
             current: RwLock::new(self.current.read().clone()),
-            outer: self.outer.as_ref().map(|outer_env| outer_env.deep_copy()),
+            parent: self.parent.as_ref().map(|outer_env| outer_env.deep_copy()),
             level: self.level,
         })
     }
@@ -90,34 +89,52 @@ impl Env {
     }
 
     pub fn assign(&self, k: &str, v: Exp) -> Exp {
+        if k.starts_with('*') && k.ends_with('*') && k.len() > 1 {
+            if self.level == 1 {
+                return self.define(k, v);
+            } else {
+                let global = self.find_env_by_level(1).unwrap();
+                return global.define(k, v);
+            }
+        }
+
         if self.current.read().contains_key(k) {
             return self.define(k, v);
         }
 
-        if let Some(outer) = self.find_env(k) {
-            outer.define(k, v)
+        if let Some(parent) = self.find_env_by_key(k) {
+            parent.define(k, v)
         } else {
             Exp::Nil
         }
     }
 
-    pub fn find_env(&self, k: &str) -> Option<SharedEnv> {
-        if self.current.read().contains_key(k) {
-            return None;
-        }
-
-        match &self.outer {
+    pub fn find_env_by_level(&self, level: u8) -> Option<SharedEnv> {
+        match &self.parent {
             None => None,
-            Some(outer) => {
-                let found = outer.find_env(k);
-                found.or_else(|| Some(outer.clone()))
+            Some(parent) => {
+                let found = parent.find_env_by_level(level);
+                found.or_else(|| Some(parent.clone()))
+            }
+        }
+    }
+
+    pub fn find_env_by_key(&self, k: &str) -> Option<SharedEnv> {
+        // if self.current.read().contains_key(k) {
+        //     return None;
+        // }
+
+        match &self.parent {
+            None => None,
+            Some(parent) => {
+                let found = parent.find_env_by_key(k);
+                found.or_else(|| Some(parent.clone()))
             }
         }
     }
 
     pub fn try_lookup(&self, k: &str) -> Result<Exp> {
-        self.lookup(k)
-            .ok_or(Error::Reason(format!("unexpected symbol '{}'", k)))
+        self.lookup(k).ok_or(SyntaxError::unbound_symbol(k))
     }
 
     pub fn lookup(&self, k: &str) -> Option<Exp> {
@@ -125,25 +142,22 @@ impl Env {
             return self.current.read().get(k).cloned();
         }
 
-        if let Some(e) = self.lookup_outer(k) {
+        if let Some(e) = self.lookup_parent(k) {
             return Some(e);
         }
 
         None
     }
 
-    pub fn lookup_outer(&self, k: &str) -> Option<Exp> {
-        match self.outer {
+    pub fn lookup_parent(&self, k: &str) -> Option<Exp> {
+        match self.parent {
             None => None,
-            Some(ref outer) => {
-                if outer.current.read().contains_key(k) {
-                    return outer.current.read().get(k).cloned();
+            Some(ref parent) => {
+                if parent.current.read().contains_key(k) {
+                    return parent.current.read().get(k).cloned();
                 }
-                // if outer.current.blocking_lock().contains_key(k) {
-                //     return outer.current.blocking_lock().get(k).cloned();
-                // }
 
-                outer.lookup_outer(k)
+                parent.lookup_parent(k)
             }
         }
     }
@@ -163,8 +177,8 @@ impl Env {
             println!("   '{}' = {}", k, v);
         }
 
-        if let Some(outer) = &self.outer {
-            outer.dump(show_builtin);
+        if let Some(parent) = &self.parent {
+            parent.dump(show_builtin);
         }
     }
 }

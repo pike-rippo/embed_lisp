@@ -1,7 +1,11 @@
 use std::vec;
 
 use crate::{
-    err, error::Error, evaluator::Evaluator, expression::Exp, flow::EvalResult, typedef::SharedEnv,
+    error::{Error, SyntaxError},
+    evaluator::Evaluator,
+    expression::Exp,
+    flow::EvalResult,
+    typedef::SharedEnv,
 };
 
 // Exp::Function(|args: &[Exp], _: &SharedEnv, _: &Evaluator| -> EvalResult {})
@@ -19,32 +23,32 @@ pub fn register(env: &SharedEnv) {
 
 fn car_impl(args: &[Exp], _: &SharedEnv, _: &Evaluator) -> EvalResult {
     if args.len() != 1 {
-        err!("car expected exactly one argument")
+        return Err(SyntaxError::invalid_args_size("car", 1, args.len()));
     }
     match &args[0] {
         Exp::List(list) => Ok(list.first().cloned().unwrap_or(Exp::Nil).value_flow()),
-        _ => err!("expected a list"),
+        _ => return Err(SyntaxError::invalid_args_type("car", "list")),
     }
 }
 
 fn cdr_impl(args: &[Exp], _: &SharedEnv, _: &Evaluator) -> EvalResult {
     if args.len() != 1 {
-        err!("cdr expected exactly one argument")
+        return Err(SyntaxError::invalid_args_size("cdr", 1, args.len()));
     }
     match &args[0] {
         Exp::List(list) => {
             let (_, res) = list
                 .split_first()
-                .ok_or(Error::from("could not split first"))?;
+                .ok_or(Error::reason("could not split first"))?;
             Ok(Exp::List(res.to_vec()).value_flow())
         }
-        _ => err!("expected a list"),
+        _ => return Err(SyntaxError::invalid_args_type("cdr", "list")),
     }
 }
 
 fn cons_impl(args: &[Exp], _: &SharedEnv, _: &Evaluator) -> EvalResult {
     if args.len() != 2 {
-        err!("cons expected exactly two arguments")
+        return Err(SyntaxError::invalid_args_size("cons", 2, args.len()));
     }
 
     let head = &args[0];
@@ -70,7 +74,7 @@ fn list_impl(args: &[Exp], _: &SharedEnv, _: &Evaluator) -> EvalResult {
 
 fn append_impl(args: &[Exp], _: &SharedEnv, _: &Evaluator) -> EvalResult {
     if args.len() != 2 {
-        err!("append expected exactly two arguments")
+        return Err(SyntaxError::invalid_args_size("append", 2, args.len()));
     }
 
     match &args[0] {
@@ -86,29 +90,36 @@ fn append_impl(args: &[Exp], _: &SharedEnv, _: &Evaluator) -> EvalResult {
                 Ok(Exp::List(list).value_flow())
             }
         },
-        _ => err!("append expected a list"),
+        _ => return Err(SyntaxError::invalid_args_type("append", "list")),
     }
 }
 
 fn length_impl(args: &[Exp], _: &SharedEnv, _: &Evaluator) -> EvalResult {
     if args.len() != 1 {
-        err!("length takes one argument")
+        return Err(SyntaxError::invalid_args_size("length", 1, args.len()));
     }
 
     match &args[0] {
         Exp::List(l) => Ok(Exp::Number(l.len() as f64).value_flow()),
         Exp::String(s) => Ok(Exp::Number(s.len() as f64).value_flow()),
-        _ => err!("length expects a list or string"),
+        // _ => err!("length expects a list or string"),
+        _ => {
+            return Err(SyntaxError::invalid_args_type("length", "list or string"));
+        }
     }
 }
 
 fn apply_impl(args: &[Exp], env: &SharedEnv, eval: &Evaluator) -> EvalResult {
     if args.len() < 2 {
-        err!("apply takes at least 2 arguments")
+        return Err(SyntaxError::not_enough_args("apply", 2, args.len()));
     }
     let f = &args[0];
     let Exp::List(list_arg) = &args[args.len() - 1] else {
-        err!("last argument of apply must be list")
+        return Err(SyntaxError::invalid_args_type_nth(
+            "apply",
+            "list",
+            args.len(),
+        ));
     };
     if args.len() == 2 {
         eval.apply(f.clone(), list_arg, env)

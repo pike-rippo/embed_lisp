@@ -2,7 +2,10 @@ use std::collections::HashMap;
 
 use parking_lot::RwLock;
 
-use crate::{Evaluator, expression::Exp, flow::EvalResult, native::NativeObject, typedef::Shared};
+use crate::{
+    Evaluator, error::SyntaxError, expression::Exp, flow::EvalResult, native::NativeObject,
+    typedef::Shared,
+};
 
 pub struct HashMapObject {
     inner: RwLock<HashMap<Exp, Exp>>,
@@ -23,7 +26,7 @@ impl HashMapObject {
 
     fn handle_insert(&self, args: &[Exp]) -> EvalResult {
         if args.len() != 2 {
-            return Err("insert expected 2 arguments".into());
+            return Err(SyntaxError::invalid_args_size("insert", 2, args.len()));
         }
 
         let (k, v) = (&args[0], &args[1]);
@@ -36,7 +39,7 @@ impl HashMapObject {
 
     fn handle_get(&self, args: &[Exp]) -> EvalResult {
         if args.len() != 1 {
-            return Err("get expected 1 argument".into());
+            return Err(SyntaxError::invalid_args_size("get", 1, args.len()));
         }
 
         let k = &args[0];
@@ -53,7 +56,7 @@ impl HashMapObject {
 
     fn handle_remove(&self, args: &[Exp]) -> EvalResult {
         if args.len() != 1 {
-            return Err("get expected 1 argument".into());
+            return Err(SyntaxError::invalid_args_size("remove", 1, args.len()));
         }
 
         let k = &args[0];
@@ -94,7 +97,7 @@ impl NativeObject for HashMapObject {
             "remove" => self.handle_remove(args),
             "keys" => self.handle_keys(args),
             "len" => self.handle_len(args),
-            _ => Err(format!("HashMap has no method {}", name).into()),
+            _ => Err(SyntaxError::no_such_method("HashMap", name)),
         }
     }
 }

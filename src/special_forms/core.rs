@@ -1,6 +1,6 @@
 use crate::{
     environment::Env,
-    err,
+    error::SyntaxError,
     evaluator::Evaluator,
     expression::Exp,
     flow::{EvalFlow, EvalResult},
@@ -29,11 +29,11 @@ pub fn register(eval: &Evaluator) {
 
 fn define_impl(args: &[Exp], env: &SharedEnv, eval: &Evaluator) -> EvalResult {
     if args.len() != 2 {
-        err!("define cam only two forms")
+        return Err(SyntaxError::invalid_args_size("define", 2, args.len()));
     }
 
     let Some(Exp::Symbol(k)) = args.first() else {
-        err!("expected first form to be a symbol")
+        return Err(SyntaxError::invalid_args_type_nth("define", "symbol", 1));
     };
 
     let v = eval.eval(args.get(1).unwrap(), env)?;
@@ -42,11 +42,11 @@ fn define_impl(args: &[Exp], env: &SharedEnv, eval: &Evaluator) -> EvalResult {
 
 fn assign_impl(args: &[Exp], env: &SharedEnv, eval: &Evaluator) -> EvalResult {
     if args.len() != 2 {
-        err!("assign cam only two forms")
+        return Err(SyntaxError::invalid_args_size("assign", 2, args.len()));
     }
 
     let Some(Exp::Symbol(k)) = args.first() else {
-        err!("expected first form to be a symbol")
+        return Err(SyntaxError::invalid_args_type_nth("assign", "symbol", 1));
     };
 
     let v = eval.eval(args.get(1).unwrap(), env)?;
@@ -55,12 +55,10 @@ fn assign_impl(args: &[Exp], env: &SharedEnv, eval: &Evaluator) -> EvalResult {
 
 fn lambda_impl(args: &[Exp], _: &SharedEnv, _: &Evaluator) -> EvalResult {
     if args.len() < 2 {
-        err!("lambda definition can only have two forms")
+        return Err(SyntaxError::not_enough_args("lambda", 2, args.len()));
     }
 
-    let Some(params_exp) = args.first() else {
-        err!("expected args form")
-    };
+    let params_exp = &args[0];
     let body = &args[1..];
 
     Ok(Exp::Lambda(LambdaExp::new(
@@ -87,7 +85,7 @@ pub fn begin_impl(args: &[Exp], env: &SharedEnv, eval: &Evaluator) -> EvalResult
 
 fn quote_impl(args: &[Exp], _: &SharedEnv, _: &Evaluator) -> EvalResult {
     if args.len() != 1 {
-        err!("quote can only have one form")
+        return Err(SyntaxError::not_enough_args("quote", 1, args.len()));
     } else {
         Ok(args[0].clone().value_flow())
     }
@@ -95,7 +93,7 @@ fn quote_impl(args: &[Exp], _: &SharedEnv, _: &Evaluator) -> EvalResult {
 
 fn quasiquote_impl(args: &[Exp], env: &SharedEnv, eval: &Evaluator) -> EvalResult {
     if args.len() != 1 {
-        err!("quasiquote can only have one form")
+        return Err(SyntaxError::not_enough_args("quasiquote", 1, args.len()));
     }
 
     let (exp, _splicing) = eval.eval_quasiquote(&args[0], env)?;
@@ -104,20 +102,24 @@ fn quasiquote_impl(args: &[Exp], env: &SharedEnv, eval: &Evaluator) -> EvalResul
 
 fn for_each_impl(args: &[Exp], env: &SharedEnv, eval: &Evaluator) -> EvalResult {
     if args.len() < 2 {
-        err!("for expects at least 2 arguments")
+        return Err(SyntaxError::not_enough_args("for", 2, args.len()));
     }
 
     let binding_pair = match &args[0] {
         Exp::List(list) if list.len() == 2 => list,
-        _ => err!("for expects first argument must be binding list"),
+        _ => {
+            return Err(SyntaxError::reason(
+                "'for' expects first argument must be binding list",
+            ));
+        }
     };
 
     let Exp::Symbol(k) = &binding_pair[0] else {
-        err!("binding list must start with a symbol")
+        return Err(SyntaxError::reason("binding list must start with a symbol"));
     };
 
     let EvalFlow::Value(Exp::List(values)) = eval.eval(&binding_pair[1], env)? else {
-        err!("binding list must end with a list")
+        return Err(SyntaxError::reason("binding list must end with a list"));
     };
     let mut result = Exp::Nil;
     let new_env = Env::new_child(Shared::clone(env));
@@ -153,7 +155,7 @@ fn async_impl(args: &[Exp], env: &SharedEnv, eval: &Evaluator) -> EvalResult {
     use crate::future::FutureExp;
 
     if args.len() != 1 {
-        err!("async can only have one form")
+        return Err(SyntaxError::invalid_args_size("async", 1, args.len()));
     }
 
     Ok(Exp::Future(FutureExp::new(&args[0], env, eval)).value_flow())
@@ -164,14 +166,14 @@ fn spawn_impl(args: &[Exp], env: &SharedEnv, eval: &Evaluator) -> EvalResult {
     use crate::task::TaskExp;
 
     if args.len() != 1 {
-        err!("spawn can only have one form")
+        return Err(SyntaxError::invalid_args_size("spawn", 1, args.len()));
     }
 
     let handle = match &args[0] {
         Exp::Future(future) => future.spawn(),
         other => match eval.eval(other, env)? {
             EvalFlow::Value(Exp::Future(future)) => future.spawn(),
-            _ => err!("spawn can only have one future"),
+            _ => return Err(SyntaxError::invalid_args_type("spawn", "future")),
         },
     };
 
@@ -181,7 +183,7 @@ fn spawn_impl(args: &[Exp], env: &SharedEnv, eval: &Evaluator) -> EvalResult {
 #[cfg(feature = "async")]
 fn await_impl(args: &[Exp], env: &SharedEnv, eval: &Evaluator) -> EvalResult {
     if args.len() != 1 {
-        err!("await can only have one form")
+        return Err(SyntaxError::invalid_args_size("await", 1, args.len()));
     }
 
     match &args[0] {

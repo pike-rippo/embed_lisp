@@ -1,4 +1,6 @@
-use crate::{err, evaluator::Evaluator, expression::Exp, flow::EvalResult, typedef::SharedEnv};
+use crate::{
+    error::SyntaxError, evaluator::Evaluator, expression::Exp, flow::EvalResult, typedef::SharedEnv,
+};
 
 pub fn register(env: &SharedEnv) {
     env.define("expand-macro", Exp::Function(expand_macro_impl));
@@ -9,7 +11,11 @@ pub fn register(env: &SharedEnv) {
 
 fn expand_macro_impl(args: &[Exp], env: &SharedEnv, eval: &Evaluator) -> EvalResult {
     if args.len() != 1 {
-        err!("expand-macro expects exactly one argument")
+        return Err(SyntaxError::invalid_args_size(
+            "expand-macro",
+            1,
+            args.len(),
+        ));
     }
     let exp = args[0].clone();
 

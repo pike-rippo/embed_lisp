@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use parking_lot::RwLock;
 
-use crate::{Exp, flow::EvalResult, typedef::Shared};
+use crate::{Exp, error::SyntaxError, flow::EvalResult, typedef::Shared};
 
 // pub type NativeCreator = Box<dyn Fn(&[Exp]) -> EvalResult + Send + Sync + 'static>;
 pub type NativeCreator = fn(&[Exp]) -> EvalResult;
@@ -27,7 +27,7 @@ impl NativeRegistry {
         let guard = self.inner.read();
         let creator = guard
             .get(name)
-            .ok_or_else(|| format!("unknown native type: '{}'", name))?;
+            .ok_or_else(|| SyntaxError::Reason(format!("unknown native type: '{}'", name)))?;
         creator(args)
     }
 

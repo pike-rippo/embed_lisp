@@ -1,5 +1,5 @@
 use crate::{
-    err,
+    error::SyntaxError,
     evaluator::Evaluator,
     expression::Exp,
     flow::EvalResult,
@@ -13,16 +13,30 @@ pub fn register(eval: &Evaluator) {
 
 fn define_macro_impl(args: &[Exp], env: &SharedEnv, _: &Evaluator) -> EvalResult {
     if args.len() < 3 {
-        err!("define-macro takes 3 arguments: name, args, and body")
+        return Err(SyntaxError::invalid_args_size(
+            "define-macro",
+            3,
+            args.len(),
+        ));
     }
 
     let name = match &args[0] {
         Exp::Symbol(s) => s,
-        _ => err!("first argument to define-macro must be a symbol"),
+        _ => {
+            return Err(SyntaxError::invalid_args_type_nth(
+                "define-macro",
+                "symbol",
+                1,
+            ));
+        }
     };
 
     if !matches!(args[1], Exp::List(_) | Exp::DottedList(_, _)) {
-        err!("define-macro expected args is list or dotted-list");
+        return Err(SyntaxError::invalid_args_type_nth(
+            "define-macro",
+            "list or dotted-list",
+            2,
+        ));
     }
 
     let lambda = LambdaExp::new(Shared::new(args[1].clone()), Vec::from(&args[2..]));

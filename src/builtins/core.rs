@@ -1,8 +1,7 @@
 use std::time::Duration;
 
 use crate::{
-    err,
-    error::Error,
+    error::SyntaxError,
     evaluator::Evaluator,
     expression::Exp,
     flow::{EvalFlow, EvalResult},
@@ -29,26 +28,33 @@ pub fn register(env: &SharedEnv) {
 
 fn call_impl(args: &[Exp], _: &SharedEnv, _: &Evaluator) -> EvalResult {
     if args.len() < 2 {
-        err!("call expects (native 'method-name' ...args)")
+        // err!("call expects (native 'method-name' ...args)")
+        return Err(SyntaxError::reason(
+            "'call' expects (native 'method-name' ...args)",
+        ));
     }
     let Exp::Native(native) = &args[0] else {
-        err!("first argument must be a native object")
+        return Err(SyntaxError::invalid_args_type_nth(
+            "call",
+            "native object",
+            1,
+        ));
     };
     let Exp::String(method_name) = &args[1] else {
-        err!("method name must be string")
+        return Err(SyntaxError::invalid_args_type_nth("call", "string", 2));
     };
     native.call_method(method_name, &args[2..])
 }
 
 fn range_impl(args: &[Exp], _: &SharedEnv, _: &Evaluator) -> EvalResult {
     if args.len() != 2 {
-        Err(Error::from("expected exactly two numbers"))
+        return Err(SyntaxError::invalid_args_size("range", 2, args.len()));
     } else {
         let Exp::Number(first) = args[0] else {
-            err!("range expected number")
+            return Err(SyntaxError::invalid_args_type("range", "number"));
         };
         let Exp::Number(second) = args[1] else {
-            err!("range expected number")
+            return Err(SyntaxError::invalid_args_type("range", "number"));
         };
         let start = first as i64;
         let end = second as i64;
@@ -58,27 +64,28 @@ fn range_impl(args: &[Exp], _: &SharedEnv, _: &Evaluator) -> EvalResult {
 
 fn type_of_impl(args: &[Exp], _: &SharedEnv, _: &Evaluator) -> EvalResult {
     if args.len() != 1 {
-        err!("type-of expected one argument");
+        return Err(SyntaxError::invalid_args_size("type-of", 1, args.len()));
     }
     Ok(Exp::String(args[0].type_of()).value_flow())
 }
 
 fn parse_impl(args: &[Exp], _: &SharedEnv, _: &Evaluator) -> EvalResult {
     if args.len() != 1 {
-        err!("parse expected one argument");
+        return Err(SyntaxError::invalid_args_size("parse", 1, args.len()));
     }
     let Exp::String(input) = &args[0] else {
-        err!("parse expected string")
+        return Err(SyntaxError::invalid_args_type("parse", "string"));
     };
-    let Ok(exps) = Parser::new().parse(input) else {
-        err!("parse failed")
-    };
+    // let Ok(exps) = Parser::new().parse(input) else {
+    //     err!("parse failed")
+    // };
+    let exps = Parser::new().parse(input)?;
     Ok(Exp::List(exps).value_flow())
 }
 
 fn eval_impl(args: &[Exp], env: &SharedEnv, eval: &Evaluator) -> EvalResult {
     if args.len() != 1 {
-        err!("eval expected one argument");
+        return Err(SyntaxError::invalid_args_size("eval", 1, args.len()));
     }
 
     // eval.eval(&args[0], env)
@@ -96,19 +103,22 @@ fn eval_impl(args: &[Exp], env: &SharedEnv, eval: &Evaluator) -> EvalResult {
 
 fn break_impl(args: &[Exp], _: &SharedEnv, _: &Evaluator) -> EvalResult {
     if !args.is_empty() {
-        err!("'break' expected no arguments");
+        // err!("'break' expected no arguments");
+        return Err(SyntaxError::invalid_args_size("break", 0, args.len()));
     }
     Ok(EvalFlow::Break)
 }
 fn continue_impl(args: &[Exp], _: &SharedEnv, _: &Evaluator) -> EvalResult {
     if !args.is_empty() {
-        err!("'continue' expected no arguments");
+        return Err(SyntaxError::invalid_args_size("continue", 0, args.len()));
     }
     Ok(EvalFlow::Continue)
 }
 fn return_impl(args: &[Exp], _: &SharedEnv, _: &Evaluator) -> EvalResult {
     if args.len() > 1 {
-        err!("'return' expected at most one argument");
+        return Err(SyntaxError::reason(
+            "'return' expected at most one argument",
+        ));
     }
     // if args.is_empty() {
     //     Ok(Exp::Nil.value_flow())

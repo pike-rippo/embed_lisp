@@ -1,6 +1,6 @@
 use std::fmt::Display;
 
-use crate::{Exp, err, error::Result};
+use crate::{Error, Exp, error::Result};
 
 pub type EvalResult = Result<EvalFlow>;
 
@@ -15,7 +15,7 @@ impl EvalFlow {
     pub fn try_unwrap(&self) -> Result<Exp> {
         match self {
             EvalFlow::Value(exp) | EvalFlow::Return(exp) => Ok(exp.clone()),
-            _ => err!("unexpected control flow in unwrap"),
+            _ => return Err(Error::reason("unexpected control flow in unwrap")),
         }
     }
 }

@@ -2,7 +2,7 @@ use std::collections::HashSet;
 
 use parking_lot::RwLock;
 
-use crate::{Evaluator, Exp, NativeObject, flow::EvalResult, typedef::Shared};
+use crate::{Evaluator, Exp, NativeObject, error::SyntaxError, flow::EvalResult, typedef::Shared};
 
 pub struct HashSetObject {
     inner: RwLock<HashSet<Exp>>,
@@ -23,7 +23,7 @@ impl HashSetObject {
 
     fn handle_insert(&self, args: &[Exp]) -> EvalResult {
         if args.len() != 1 {
-            return Err("insert expected 1 argument".into());
+            return Err(SyntaxError::invalid_args_size("insert", 1, args.len()));
         }
 
         let value = &args[0];
@@ -34,7 +34,7 @@ impl HashSetObject {
 
     fn handle_remove(&self, args: &[Exp]) -> EvalResult {
         if args.len() != 1 {
-            return Err("remove expected 1 argument".into());
+            return Err(SyntaxError::invalid_args_size("remove", 1, args.len()));
         }
 
         let value = &args[0];
@@ -45,7 +45,7 @@ impl HashSetObject {
 
     fn handle_contains(&self, args: &[Exp]) -> EvalResult {
         if args.len() != 1 {
-            return Err("contains expected 1 argument".into());
+            return Err(SyntaxError::invalid_args_size("contains", 1, args.len()));
         }
 
         let value = &args[0];
@@ -56,7 +56,7 @@ impl HashSetObject {
 
     fn handle_clear(&self, args: &[Exp]) -> EvalResult {
         if args.is_empty() {
-            return Err("clear expected 0 argument".into());
+            return Err(SyntaxError::invalid_args_size("clear", 0, args.len()));
         }
 
         self.inner.write().clear();
@@ -65,7 +65,7 @@ impl HashSetObject {
 
     fn handle_len(&self, args: &[Exp]) -> EvalResult {
         if args.is_empty() {
-            return Err("len expected 0 argument".into());
+            return Err(SyntaxError::invalid_args_size("len", 0, args.len()));
         }
 
         Ok(Exp::Number(self.inner.write().len() as f64).value_flow())
@@ -84,7 +84,7 @@ impl NativeObject for HashSetObject {
             "contains" => self.handle_contains(args),
             "clear" => self.handle_clear(args),
             "len" => self.handle_len(args),
-            _ => Err(format!("HashSet has no method {}", name).into()),
+            _ => Err(SyntaxError::no_such_method("HashSet", name)),
         }
     }
 }
