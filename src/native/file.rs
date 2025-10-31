@@ -15,7 +15,7 @@ use crate::{
 };
 
 pub struct FileObject {
-    inner: RwLock<File>,
+    inner: RwLock<Option<File>>,
 }
 
 pub fn register(eval: &Evaluator) {
@@ -24,7 +24,6 @@ pub fn register(eval: &Evaluator) {
             return Err(SyntaxError::too_many_args("File", 2, args.len()));
         }
         let Exp::String(path) = &args[0] else {
-            // err!("open expects a string")
             return Err(SyntaxError::invalid_args_type_nth("File", "string", 1));
         };
 
@@ -69,17 +68,41 @@ pub fn register(eval: &Evaluator) {
 impl FileObject {
     pub fn new(file: File) -> Self {
         Self {
-            inner: RwLock::new(file),
+            inner: RwLock::new(Some(file)),
         }
+    }
+
+    fn handle_close(&self, _args: &[Exp]) -> EvalResult {
+        self.inner.write().take();
+        Ok(Exp::Bool(true).value_flow())
     }
 
     fn handle_read(&self, _args: &[Exp]) -> EvalResult {
         let mut buf = String::new();
         self.inner
             .write()
+            .as_mut()
+            .ok_or_else(|| Error::reason("file already closed"))?
             .read_to_string(&mut buf)
             .or(Err(Error::reason("file read error")))?;
         Ok(Exp::String(buf).value_flow())
+    }
+
+    fn handle_read_lines(&self, _args: &[Exp]) -> EvalResult {
+        let mut buf = String::new();
+        self.inner
+            .write()
+            .as_mut()
+            .ok_or_else(|| Error::reason("file already closed"))?
+            .read_to_string(&mut buf)
+            .or(Err(Error::reason("file read error")))?;
+
+        Ok(Exp::List(
+            buf.lines()
+                .map(|l| Exp::String(l.to_string()))
+                .collect::<Vec<Exp>>(),
+        )
+        .value_flow())
     }
 
     fn handle_write(&self, args: &[Exp]) -> EvalResult {
@@ -92,6 +115,8 @@ impl FileObject {
                 let bytes = maybe_bytes?;
                 self.inner
                     .write()
+                    .as_mut()
+                    .ok_or_else(|| Error::reason("file already closed"))?
                     .write_all(bytes)
                     .or(Err(Error::reason("file write error")))
             })?;
@@ -108,23 +133,12 @@ impl FileObject {
                 let string = maybe_string?;
                 self.inner
                     .write()
+                    .as_mut()
+                    .ok_or_else(|| Error::reason("file already closed"))?
                     .write_all(string.as_bytes())
                     .or(Err(Error::reason("file write error")))
             })?;
         Ok(Exp::Bool(true).value_flow())
-        // if args.len() != 1 {
-        //     err!("write expects one argument")
-        // }
-
-        // let Exp::String(s) = &args[0] else {
-        //     err!("write expects a string")
-        // };
-
-        // self.inner
-        //     .write()
-        //     .write_all(format!("{}\n", s).as_bytes())
-        //     .or(Err(Error::from("file read error")))?;
-        // Ok(Exp::Bool(true).value_flow())
     }
 }
 
@@ -135,10 +149,11 @@ impl NativeObject for FileObject {
 
     fn call_method(&self, method_name: &str, args: &[Exp]) -> EvalResult {
         match method_name {
+            "close" => self.handle_close(args),
             "read" => self.handle_read(args),
+            "read-lines" => self.handle_read_lines(args),
             "write" => self.handle_write(args),
             "writeln" => self.handle_writeln(args),
-            // _ => Err(Error::Reason(format!("unknown method '{}'", method_name))),
             _ => Err(SyntaxError::no_such_method("File", method_name)),
         }
     }

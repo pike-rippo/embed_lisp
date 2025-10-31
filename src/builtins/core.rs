@@ -76,9 +76,6 @@ fn parse_impl(args: &[Exp], _: &SharedEnv, _: &Evaluator) -> EvalResult {
     let Exp::String(input) = &args[0] else {
         return Err(SyntaxError::invalid_args_type("parse", "string"));
     };
-    // let Ok(exps) = Parser::new().parse(input) else {
-    //     err!("parse failed")
-    // };
     let exps = Parser::new().parse(input)?;
     Ok(Exp::List(exps).value_flow())
 }

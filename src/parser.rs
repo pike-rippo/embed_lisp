@@ -109,7 +109,6 @@ fn read_seq(input: &[String]) -> Result<(Exp, &[String])> {
 
         // obj.methodで、methodにリストは付け付けない
         if next == "." {
-            println!(".");
             res.insert(res.len() - 1, Exp::Symbol("call".to_string()));
             let method = rest.first().ok_or(ParseError::unexpected_token("."))?;
             res.push(Exp::String(method.to_string()));

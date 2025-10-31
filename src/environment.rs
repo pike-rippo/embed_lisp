@@ -113,22 +113,26 @@ impl Env {
         match &self.parent {
             None => None,
             Some(parent) => {
-                let found = parent.find_env_by_level(level);
-                found.or_else(|| Some(parent.clone()))
+                if parent.level == level {
+                    Some(parent.clone())
+                } else {
+                    parent.find_env_by_level(level)
+                }
             }
         }
     }
 
     pub fn find_env_by_key(&self, k: &str) -> Option<SharedEnv> {
-        // if self.current.read().contains_key(k) {
-        //     return None;
-        // }
-
         match &self.parent {
             None => None,
             Some(parent) => {
-                let found = parent.find_env_by_key(k);
-                found.or_else(|| Some(parent.clone()))
+                // let found = parent.find_env_by_key(k);
+                // found.or_else(|| Some(parent.clone()))
+                if parent.current.read().contains_key(k) {
+                    Some(parent.clone())
+                } else {
+                    parent.find_env_by_key(k)
+                }
             }
         }
     }
