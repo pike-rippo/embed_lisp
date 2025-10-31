@@ -9,8 +9,49 @@ use crate::{
 };
 
 pub fn register(eval: &Evaluator) {
+    eval.register_special_form("define", define_impl);
+    eval.register_special_form("assign", assign_impl);
+    eval.register_special_form("drop", drop_impl);
     eval.register_special_form("let", |args, env, eval| let_impl(args, env, eval, false));
     eval.register_special_form("let*", |args, env, eval| let_impl(args, env, eval, true));
+}
+
+fn define_impl(args: &[Exp], env: &SharedEnv, eval: &Evaluator) -> EvalResult {
+    if args.len() != 2 {
+        return Err(SyntaxError::invalid_args_size("define", 2, args.len()));
+    }
+
+    let Some(Exp::Symbol(k)) = args.first() else {
+        return Err(SyntaxError::invalid_args_type_nth("define", "symbol", 1));
+    };
+
+    let v = eval.eval(args.get(1).unwrap(), env)?;
+    Ok(env.define(k, v.try_unwrap()?).value_flow())
+}
+
+fn assign_impl(args: &[Exp], env: &SharedEnv, eval: &Evaluator) -> EvalResult {
+    if args.len() != 2 {
+        return Err(SyntaxError::invalid_args_size("assign", 2, args.len()));
+    }
+
+    let Some(Exp::Symbol(k)) = args.first() else {
+        return Err(SyntaxError::invalid_args_type_nth("assign", "symbol", 1));
+    };
+
+    let v = eval.eval(args.get(1).unwrap(), env)?;
+    Ok(env.assign(k, v.try_unwrap()?).value_flow())
+}
+
+fn drop_impl(args: &[Exp], env: &SharedEnv, _eval: &Evaluator) -> EvalResult {
+    if args.len() != 1 {
+        return Err(SyntaxError::invalid_args_size("drop", 1, args.len()));
+    }
+
+    let Exp::Symbol(k) = args.first().unwrap() else {
+        return Err(SyntaxError::invalid_args_type("drop", "symbol"));
+    };
+
+    Ok(env.drop_symbol(k).value_flow())
 }
 
 fn let_impl(args: &[Exp], env: &SharedEnv, eval: &Evaluator, star: bool) -> EvalResult {
