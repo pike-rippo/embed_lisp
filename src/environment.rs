@@ -109,6 +109,10 @@ impl Env {
         }
     }
 
+    pub fn drop_symbol(&self, l: &str) -> Exp {
+        self.current.write().remove(l).unwrap_or(Exp::Nil)
+    }
+
     pub fn find_env_by_level(&self, level: u8) -> Option<SharedEnv> {
         match &self.parent {
             None => None,

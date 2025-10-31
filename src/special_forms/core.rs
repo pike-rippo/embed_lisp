@@ -7,10 +7,8 @@ use crate::{
     lambda::LambdaExp,
     typedef::{Shared, SharedEnv},
 };
-/// 'define', 'assign', 'lambda', 'begin', 'quote', 'for'
+/// 'lambda', 'begin', 'quote', 'for'
 pub fn register(eval: &Evaluator) {
-    eval.register_special_form("define", define_impl);
-    eval.register_special_form("assign", assign_impl);
     eval.register_special_form("lambda", lambda_impl);
     eval.register_special_form("begin", begin_impl);
     eval.register_special_form("quote", quote_impl);
@@ -25,32 +23,6 @@ pub fn register(eval: &Evaluator) {
         eval.register_special_form("spawn", spawn_impl);
         eval.register_special_form("await", await_impl);
     }
-}
-
-fn define_impl(args: &[Exp], env: &SharedEnv, eval: &Evaluator) -> EvalResult {
-    if args.len() != 2 {
-        return Err(SyntaxError::invalid_args_size("define", 2, args.len()));
-    }
-
-    let Some(Exp::Symbol(k)) = args.first() else {
-        return Err(SyntaxError::invalid_args_type_nth("define", "symbol", 1));
-    };
-
-    let v = eval.eval(args.get(1).unwrap(), env)?;
-    Ok(env.define(k, v.try_unwrap()?).value_flow())
-}
-
-fn assign_impl(args: &[Exp], env: &SharedEnv, eval: &Evaluator) -> EvalResult {
-    if args.len() != 2 {
-        return Err(SyntaxError::invalid_args_size("assign", 2, args.len()));
-    }
-
-    let Some(Exp::Symbol(k)) = args.first() else {
-        return Err(SyntaxError::invalid_args_type_nth("assign", "symbol", 1));
-    };
-
-    let v = eval.eval(args.get(1).unwrap(), env)?;
-    Ok(env.assign(k, v.try_unwrap()?).value_flow())
 }
 
 fn lambda_impl(args: &[Exp], _: &SharedEnv, _: &Evaluator) -> EvalResult {
