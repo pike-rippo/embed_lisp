@@ -73,7 +73,7 @@ impl Hash for Exp {
 impl std::fmt::Debug for Exp {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Exp::Native(obj) => write!(f, "<native:{}>", obj.get_type_name()),
+            Exp::Native(obj) => write!(f, "<native:{}>", obj),
             other => write!(f, "{}", other),
         }
     }
@@ -141,7 +141,7 @@ impl std::fmt::Display for Exp {
                         .join(" ")
                 )
             }
-            Self::Native(native) => format!("Native {{ {} }}", native.get_type_name()),
+            Self::Native(native) => format!("Native {{ {} }}", native),
             #[cfg(feature = "async")]
             Self::Future(_) => "Future {}".to_string(),
             #[cfg(feature = "async")]
@@ -225,7 +225,7 @@ impl Exp {
             Exp::Function(_) => "Function".to_string(),
             Exp::Lambda(_) => "Lambda".to_string(),
             Exp::Macro(_) => "Macro".to_string(),
-            Exp::Native(native) => format!("Native {{ {} }}", native.get_type_name()),
+            Exp::Native(native) => format!("Native {{ {} }}", native),
             #[cfg(feature = "async")]
             Exp::Future(_) => "Future".to_string(),
             #[cfg(feature = "async")]

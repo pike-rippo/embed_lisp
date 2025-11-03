@@ -176,10 +176,12 @@ impl Env {
         if !show_builtin && self.level == 0 {
             return;
         }
-        let level = if self.level != 0 {
-            &self.level.to_string()[..]
-        } else {
+        let level = if self.level == 0 {
             "Builtin"
+        } else if self.level == 1 {
+            "Global"
+        } else {
+            &(self.level - 1).to_string()[..]
         };
         println!("Level: {}", level);
 

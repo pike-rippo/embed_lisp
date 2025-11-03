@@ -1,4 +1,4 @@
-use std::collections::HashSet;
+use std::{collections::HashSet, fmt::Display};
 
 use parking_lot::RwLock;
 
@@ -72,11 +72,13 @@ impl HashSetObject {
     }
 }
 
-impl NativeObject for HashSetObject {
-    fn get_type_name(&self) -> &'static str {
-        "HashSet"
+impl Display for HashSetObject {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "HashSet")
     }
+}
 
+impl NativeObject for HashSetObject {
     fn call_method(&self, name: &str, args: &[Exp]) -> EvalResult {
         match name {
             "insert" => self.handle_insert(args),

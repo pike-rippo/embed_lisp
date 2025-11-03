@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, fmt::Display};
 
 use parking_lot::RwLock;
 
@@ -85,11 +85,13 @@ impl HashMapObject {
     }
 }
 
-impl NativeObject for HashMapObject {
-    fn get_type_name(&self) -> &'static str {
-        "HashMap"
+impl Display for HashMapObject {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "HashMap")
     }
+}
 
+impl NativeObject for HashMapObject {
     fn call_method(&self, name: &str, args: &[Exp]) -> EvalResult {
         match name {
             "insert" => self.handle_insert(args),

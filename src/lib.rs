@@ -36,7 +36,9 @@ pub use native_registry::NativeCreator;
 use crate::{
     environment::{Env, SharedEnv},
     flow::EvalResult,
+    native::FileObject,
     parser::Parser,
+    typedef::Shared,
 };
 
 pub struct Interpreter {
@@ -55,10 +57,14 @@ impl Default for Interpreter {
 impl Interpreter {
     pub fn new() -> Self {
         let builtin_env = Env::builtin_env();
+        let global_env = Env::new_with_builtin(builtin_env.clone());
+        global_env.assign("*stdin*", Exp::Native(Shared::new(FileObject::stdin())));
+        global_env.assign("*stdout*", Exp::Native(Shared::new(FileObject::stdout())));
+        global_env.assign("*stderr*", Exp::Native(Shared::new(FileObject::stderr())));
         Self {
             parser: Parser::new(),
             eval: Evaluator::new(),
-            env: Env::new_with_builtin(builtin_env.clone()),
+            env: Env::extend(global_env, &[], &[]),
             builtin_env,
         }
     }

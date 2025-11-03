@@ -1,4 +1,19 @@
-(define not (lambda (cond) if cond false true))
-(define-macro until (cond ... body) `(loop (if ,cond (break) nil) ,@body))
-(define-macro while (cond ... body) `(loop (if ,cond nil (break)) ,@body))
-(define-macro for (init cond update ... body) `(scope ,@init (while ,cond ,@body ,update)))
+(define-macro define-func (name args ... body)
+    `(define ,name (lambda ,args ,@body)))
+
+(define-func not (cond) if cond false true)
+
+(define-macro until (cond ... body)
+    `(loop
+        (if ,cond (break) nil)
+        ,@body))
+
+(define-macro while (cond ... body)
+    `(loop
+        (if ,cond nil (break))
+        ,@body))
+
+(define-macro for (init cond update ... body)
+    `(scope
+        ,@init
+        (while ,cond ,@body ,update)))

@@ -1,11 +1,14 @@
+use std::fmt::Display;
+
 use crate::{Evaluator, expression::Exp, flow::EvalResult};
 
 mod file;
 mod hash_map;
 mod hash_set;
 
-pub trait NativeObject {
-    fn get_type_name(&self) -> &'static str;
+pub use file::FileObject;
+
+pub trait NativeObject: Display {
     fn call_method(&self, name: &str, args: &[Exp]) -> EvalResult;
 }
 
