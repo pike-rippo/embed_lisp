@@ -28,7 +28,6 @@ pub fn register(env: &SharedEnv) {
 
 fn call_impl(args: &[Exp], _: &SharedEnv, _: &Evaluator) -> EvalResult {
     if args.len() < 2 {
-        // err!("call expects (native 'method-name' ...args)")
         return Err(SyntaxError::reason(
             "'call' expects (native 'method-name' ...args)",
         ));

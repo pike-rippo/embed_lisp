@@ -94,7 +94,7 @@ impl Evaluator {
 
     pub fn eval(&self, exp: &Exp, env: &SharedEnv) -> EvalResult {
         if self.trace.load(std::sync::atomic::Ordering::Relaxed) {
-            println!("trace eval: {}", exp);
+            println!("trace eval: {:?}", exp);
         }
 
         match exp {

@@ -280,7 +280,7 @@ impl NativeObject for FileObject {
 fn unwrap_for_write(e: &Exp) -> Result<&[u8]> {
     match e {
         Exp::String(s) => Ok(s.as_bytes()),
-        _ => Err(SyntaxError::invalid_args_type("writeln", "string")),
+        _ => Err(SyntaxError::invalid_args_type("write", "string")),
     }
 }
 

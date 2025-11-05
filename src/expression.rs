@@ -1,4 +1,7 @@
-use std::hash::{Hash, Hasher};
+use std::{
+    fmt::write,
+    hash::{Hash, Hasher},
+};
 
 #[cfg(feature = "async")]
 use crate::{Error, future::FutureExp, task::TaskExp};
@@ -72,9 +75,40 @@ impl Hash for Exp {
 
 impl std::fmt::Debug for Exp {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        // match self {
+        //     Exp::Native(obj) => write!(f, "<native:{}>", obj),
+        //     other => write!(f, "{}", other),
+        // }
         match self {
-            Exp::Native(obj) => write!(f, "<native:{}>", obj),
-            other => write!(f, "{}", other),
+            Self::Nil => write!(f, "Exp::Nil"),
+            Self::Number(n) => write!(f, "Exp::Number({})", n),
+            Self::Bool(b) => write!(f, "Exp::Bool({})", b),
+            Self::String(s) => write!(f, "Exp::String(\"{}\")", s),
+            Self::List(list) => write!(f, "Exp::List({:?})", list),
+            Self::DottedList(args, tail) => write!(
+                f,
+                "({} ... {:?})",
+                args.iter()
+                    .map(|e| format!("{:?}", e))
+                    .collect::<Vec<String>>()
+                    .join(" "),
+                tail
+            ),
+            Self::Symbol(s) => write!(f, "Exp::Symbol({})", s),
+            Self::Function(_) => write!(f, "Exp::Function()"),
+            Self::Lambda(lambda) => write!(f, "Exp::Lambda({:?})", lambda),
+            Self::Macro(lambda) => write!(f, "Exp::Macro({:?})", lambda),
+            Self::Native(native) => write!(f, "Exp::Native({})", native),
+            #[cfg(feature = "async")]
+            Self::Future(_) => write!(f, "Exp::Future()"),
+            #[cfg(feature = "async")]
+            Self::Task(task) => {
+                if task.is_ready() {
+                    write!(f, "Task {{ Ready }}")
+                } else {
+                    write!(f, "Task {{ Pending }}")
+                }
+            }
         }
     }
 }
