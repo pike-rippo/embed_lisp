@@ -1,3 +1,4 @@
+;; define namespace 'std'
 (assign std (namespace
     (io (namespace
         (stdin (create-native "File" 0))

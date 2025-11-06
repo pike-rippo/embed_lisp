@@ -25,6 +25,7 @@ impl Parser {
                 (".", Some('.'), Some('.')),
                 ("...", None, None),
                 ("::", None, None),
+                (";#", None, None),
             ])
             .value();
 
@@ -47,7 +48,6 @@ fn tokenize(input: &[String]) -> Result<(Exp, &[String])> {
         .ok_or(ParseError::reason("could not get token"))?;
     match &front[..] {
         "(" => read_seq(rest),
-        // ")" => Err(Error::from("unexpected ')'")),
         ")" => Err(ParseError::unexpected_token(")")),
         "'" => {
             let (quoted_exp, new_rest) = tokenize(rest)?;
@@ -79,6 +79,10 @@ fn tokenize(input: &[String]) -> Result<(Exp, &[String])> {
                 ]),
                 new_rest,
             ))
+        }
+        ";#" => {
+            let (_, rest_after_expr) = tokenize(rest)?;
+            tokenize(rest_after_expr)
         }
         _ => Ok((parse_atomic(front), rest)),
     }
@@ -159,11 +163,32 @@ fn split_whitespace_outside_quote(s: &str) -> Vec<String> {
     let mut tokens: Vec<String> = Vec::new();
     let mut current_token = String::new();
     let mut inside = false;
-    let chars = s.chars();
+    let mut chars = s.chars().peekable();
     let mut pre_char_was_backslash = false;
 
-    // while let Some(c) = chars.next() {
-    for c in chars {
+    // for c in chars {
+    while let Some(c) = chars.next() {
+        if c == ';' && chars.peek() == Some(&'*') && !inside {
+            chars.next();
+            while let Some(nc) = chars.next() {
+                if nc == '*' && chars.peek() == Some(&';') {
+                    chars.next();
+                    break;
+                }
+            }
+            continue;
+        }
+
+        if c == ';' && chars.peek() == Some(&';') && !inside {
+            chars.next();
+            while let Some(nc) = chars.next() {
+                if nc == '\n' {
+                    break;
+                }
+            }
+            continue;
+        }
+
         if c == '"' && !pre_char_was_backslash {
             inside = !inside;
             current_token.push(c);
