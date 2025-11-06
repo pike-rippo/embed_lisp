@@ -2,32 +2,32 @@ use crate::{
     Error, Evaluator, Exp,
     environment::SharedEnv,
     error::{Result, SyntaxError},
+    exp::NameSpace,
     flow::EvalResult,
+    typedef::Shared,
 };
 
 pub fn register(env: &SharedEnv) {
-    env.define("string", Exp::Function(string_impl));
-    env.define("concat", Exp::Function(concat_impl));
-    env.define("substr", Exp::Function(substr_impl));
-    env.define("char-at", Exp::Function(char_at_impl));
-    env.define("index-of", Exp::Function(index_of_impl));
-    env.define("starts-with?", Exp::Function(starts_with_impl));
-    env.define("ends-with?", Exp::Function(ends_with_impl));
-    env.define("contains?", Exp::Function(contains_impl));
-    env.define("replace", Exp::Function(replace_impl));
-    env.define("split", Exp::Function(split_impl));
-    env.define("join", Exp::Function(join_impl));
+    let ns = NameSpace::default();
 
-    env.define("trim", Exp::Function(trim_impl));
-    env.define("to-upper", Exp::Function(to_upper_impl));
-    env.define("to-lower", Exp::Function(to_lower_impl));
-    env.define("repeat", Exp::Function(repeat_impl));
-    // env.define("pad-left", Exp::Function(pad_left_impl));
-    // env.define("pad-right", Exp::Function(pad_right_impl));
+    ns.define("string", Exp::Function(string_impl));
+    ns.define("concat", Exp::Function(concat_impl));
+    ns.define("substr", Exp::Function(substr_impl));
+    ns.define("char-at", Exp::Function(char_at_impl));
+    ns.define("index-of", Exp::Function(index_of_impl));
+    ns.define("starts-with?", Exp::Function(starts_with_impl));
+    ns.define("ends-with?", Exp::Function(ends_with_impl));
+    ns.define("contains?", Exp::Function(contains_impl));
+    ns.define("replace", Exp::Function(replace_impl));
+    ns.define("split", Exp::Function(split_impl));
+    ns.define("join", Exp::Function(join_impl));
 
-    // env.define("format", Exp::Function(format_impl));
-    // env.define("escape", Exp::Function(escape_impl));
-    // env.define("unescape", Exp::Function(unescape_impl));
+    ns.define("trim", Exp::Function(trim_impl));
+    ns.define("to-upper", Exp::Function(to_upper_impl));
+    ns.define("to-lower", Exp::Function(to_lower_impl));
+    ns.define("repeat", Exp::Function(repeat_impl));
+
+    env.assign("str", Exp::Namespace(Shared::new(ns)));
 }
 
 fn extract_string<'a>(func_name: &'static str, e: &'a Exp) -> Result<&'a String> {

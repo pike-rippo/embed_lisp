@@ -3,7 +3,7 @@ use tokio::task::JoinHandle;
 
 #[cfg(feature = "async")]
 use crate::{
-    GLOBAL_RUNTIME, environment::SharedEnv, evaluator::Evaluator, expression::Exp, flow::EvalResult,
+    GLOBAL_RUNTIME, environment::SharedEnv, evaluator::Evaluator, exp::Exp, flow::EvalResult,
 };
 
 #[cfg(feature = "async")]

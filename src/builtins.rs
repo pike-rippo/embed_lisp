@@ -6,6 +6,7 @@ mod debug;
 mod io;
 mod list;
 mod math;
+mod namespace;
 mod string;
 
 pub fn register_all(env: &SharedEnv) {
@@ -15,5 +16,6 @@ pub fn register_all(env: &SharedEnv) {
     io::register(env);
     list::register(env);
     math::register(env);
-    string::register(env);
+    namespace::register(env);
+    // string::register(env);
 }

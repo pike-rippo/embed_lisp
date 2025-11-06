@@ -1,24 +1,31 @@
 use std::{
-    fmt::write,
+    collections::HashMap,
+    fmt::Display,
     hash::{Hash, Hasher},
 };
 
 #[cfg(feature = "async")]
-use crate::{Error, future::FutureExp, task::TaskExp};
+use crate::{
+    Error,
+    exp::{FutureExp, TaskExp},
+};
 use crate::{
     environment::SharedEnv,
     error::Result,
     evaluator::Evaluator,
+    exp::{LambdaExp, namespace::NameSpace},
     flow::{EvalFlow, EvalResult},
-    lambda::LambdaExp,
-    native::NativeObject,
     typedef::Shared,
 };
 
+pub trait Callable: Display {
+    fn call_method(&self, name: &str, args: &[Exp]) -> EvalResult;
+}
+
 #[cfg(not(feature = "async"))]
-pub type SharedNativeObject = Shared<dyn NativeObject>;
+pub type SharedNativeObject = Shared<dyn Callable>;
 #[cfg(feature = "async")]
-pub type SharedNativeObject = Shared<dyn NativeObject + Send + Sync>;
+pub type SharedNativeObject = Shared<dyn Callable + Send + Sync>;
 
 pub type BuiltinFunction = fn(&[Exp], &SharedEnv, &Evaluator) -> EvalResult;
 
@@ -35,6 +42,7 @@ pub enum Exp {
     Lambda(LambdaExp),
     Macro(LambdaExp),
     Native(SharedNativeObject),
+    Namespace(Shared<NameSpace>),
     #[cfg(feature = "async")]
     Future(FutureExp),
     #[cfg(feature = "async")]
@@ -99,6 +107,7 @@ impl std::fmt::Debug for Exp {
             Self::Lambda(lambda) => write!(f, "Exp::Lambda({:?})", lambda),
             Self::Macro(lambda) => write!(f, "Exp::Macro({:?})", lambda),
             Self::Native(native) => write!(f, "Exp::Native({})", native),
+            Self::Namespace(_) => write!(f, "Exp::Namespace()"),
             #[cfg(feature = "async")]
             Self::Future(_) => write!(f, "Exp::Future()"),
             #[cfg(feature = "async")]
@@ -176,6 +185,7 @@ impl std::fmt::Display for Exp {
                 )
             }
             Self::Native(native) => format!("Native {{ {} }}", native),
+            Self::Namespace(_) => "Namespace".to_string(),
             #[cfg(feature = "async")]
             Self::Future(_) => "Future {}".to_string(),
             #[cfg(feature = "async")]
@@ -260,6 +270,7 @@ impl Exp {
             Exp::Lambda(_) => "Lambda".to_string(),
             Exp::Macro(_) => "Macro".to_string(),
             Exp::Native(native) => format!("Native {{ {} }}", native),
+            Exp::Namespace(_) => format!("Namespace"),
             #[cfg(feature = "async")]
             Exp::Future(_) => "Future".to_string(),
             #[cfg(feature = "async")]

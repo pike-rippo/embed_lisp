@@ -1,4 +1,4 @@
-use crate::{environment::SharedEnv, evaluator::Evaluator, expression::Exp, flow::EvalResult};
+use crate::{environment::SharedEnv, evaluator::Evaluator, exp::Exp, flow::EvalResult};
 
 pub fn register(env: &SharedEnv) {
     env.define("print", Exp::Function(print_impl));

@@ -9,9 +9,8 @@ use parking_lot::RwLock;
 use crate::{
     Evaluator,
     error::{Error, Result, SyntaxError},
-    expression::Exp,
+    exp::{Callable, Exp},
     flow::EvalResult,
-    native::NativeObject,
     typedef::Shared,
 };
 
@@ -159,6 +158,19 @@ impl FileObject {
         Ok(Exp::String(buf).value_flow())
     }
 
+    fn handle_read_line(&self, _args: &[Exp]) -> EvalResult {
+        let mut buf = String::new();
+        let mut inner = self.inner.write();
+        let _ = match inner
+            .as_mut()
+            .ok_or_else(|| Error::reason("file already closed"))?
+        {
+            FileInner::Stdin(stdin) => stdin.read_line(&mut buf),
+            other => return Err(Error::Reason(format!("{} is cannot call read-line", other))),
+        };
+        Ok(Exp::String(buf.trim_end().to_string()).value_flow())
+    }
+
     fn handle_read_lines(&self, _args: &[Exp]) -> EvalResult {
         let mut buf = String::new();
         let mut inner = self.inner.write();
@@ -263,11 +275,12 @@ impl Display for FileObject {
     }
 }
 
-impl NativeObject for FileObject {
+impl Callable for FileObject {
     fn call_method(&self, method_name: &str, args: &[Exp]) -> EvalResult {
         match method_name {
             "close" => self.handle_close(args),
             "read" => self.handle_read(args),
+            "read-line" => self.handle_read_line(args),
             "read-lines" => self.handle_read_lines(args),
             "write" => self.handle_write(args),
             "writeln" => self.handle_writeln(args),

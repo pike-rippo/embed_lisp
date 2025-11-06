@@ -1,4 +1,4 @@
-use crate::{expression::Exp, typedef::Shared};
+use crate::{exp::Exp, typedef::Shared};
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct LambdaExp {

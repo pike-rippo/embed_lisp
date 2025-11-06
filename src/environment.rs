@@ -5,7 +5,7 @@ use parking_lot::RwLock;
 use crate::{
     builtins::register_all,
     error::{Result, SyntaxError},
-    expression::Exp,
+    exp::Exp,
     typedef::Shared,
 };
 
@@ -91,24 +91,41 @@ impl Env {
     }
 
     pub fn assign(&self, k: &str, v: Exp) -> Exp {
-        if k.starts_with('*') && k.ends_with('*') && k.len() > 1 {
-            if self.level == 1 {
-                return self.define(k, v);
-            } else {
-                let global = self.find_env_by_level(1).unwrap();
-                return global.define(k, v);
-            }
-        }
-
-        if self.current.read().contains_key(k) {
+        if self.level == 1 {
             return self.define(k, v);
         }
 
-        if let Some(parent) = self.find_env_by_key(k) {
-            parent.define(k, v)
+        if self.current.read().contains_key(k) {
+            self.define(k, v)
         } else {
-            Exp::Nil
+            self.parent.as_ref().unwrap().assign(k, v)
         }
+
+        // if self.level == 1 {
+        //     self.define(k, v)
+        // } else {
+        //     let global = self.find_env_by_level(1).unwrap();
+        //     global.define(k, v)
+        // }
+
+        // if k.starts_with('*') && k.ends_with('*') && k.len() > 1 {
+        //     if self.level == 1 {
+        //         return self.define(k, v);
+        //     } else {
+        //         let global = self.find_env_by_level(1).unwrap();
+        //         return global.define(k, v);
+        //     }
+        // }
+
+        // if self.current.read().contains_key(k) {
+        //     return self.define(k, v);
+        // }
+
+        // if let Some(parent) = self.find_env_by_key(k) {
+        //     parent.define(k, v)
+        // } else {
+        //     Exp::Nil
+        // }
     }
 
     pub fn drop_symbol(&self, l: &str) -> Exp {
@@ -185,8 +202,12 @@ impl Env {
         };
         println!("Level: {}", level);
 
-        for (k, v) in self.current.read().iter() {
-            println!("   '{}' = {}", k, v);
+        if self.current.read().is_empty() {
+            println!("   EMPTY");
+        } else {
+            for (k, v) in self.current.read().iter() {
+                println!("   '{}' = {}", k, v);
+            }
         }
 
         if let Some(parent) = &self.parent {

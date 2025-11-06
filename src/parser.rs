@@ -1,6 +1,6 @@
 use crate::{
     error::{ParseError, Result},
-    expression::Exp,
+    exp::Exp,
     replacer::Replacer,
     typedef::Shared,
 };
@@ -24,7 +24,7 @@ impl Parser {
                 (",@", None, None),
                 (".", Some('.'), Some('.')),
                 ("...", None, None),
-                // ("#'", None, None),
+                ("::", None, None),
             ])
             .value();
 
@@ -118,6 +118,18 @@ fn read_seq(input: &[String]) -> Result<(Exp, &[String])> {
             }
         }
 
+        if next == "::" {
+            let ns = res.pop().ok_or(ParseError::unexpected_token("::"))?;
+            let k = rest.first().ok_or(ParseError::unexpected_token("::"))?;
+            res.push(Exp::List(vec![
+                Exp::Symbol("ns-get".to_string()),
+                ns,
+                Exp::String(k.to_string()),
+            ]));
+            xs = &rest[1..];
+            continue;
+        }
+
         let (exp, new_xs) = tokenize(xs)?;
         res.push(exp);
         xs = new_xs;
@@ -175,7 +187,7 @@ fn split_whitespace_outside_quote(s: &str) -> Vec<String> {
 
 #[cfg(test)]
 mod test {
-    use crate::{expression::Exp, parser::Parser};
+    use crate::{exp::Exp, parser::Parser};
 
     #[test]
     fn parser() {

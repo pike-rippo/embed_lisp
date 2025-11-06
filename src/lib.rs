@@ -9,16 +9,14 @@ mod builtins;
 mod environment;
 mod error;
 mod evaluator;
-mod expression;
+mod exp;
 mod flow;
-mod future;
-mod lambda;
+mod namespace;
 mod native;
 mod native_registry;
 mod parser;
 mod replacer;
 mod special_forms;
-mod task;
 mod typedef;
 
 #[cfg(feature = "async")]
@@ -29,8 +27,7 @@ pub static GENESYM_COUNTER: AtomicUsize = AtomicUsize::new(0);
 
 pub use error::Error;
 pub use evaluator::{Evaluator, SpecialFormFn};
-pub use expression::{BuiltinFunction, Exp};
-pub use native::NativeObject;
+pub use exp::{BuiltinFunction, Callable, Exp};
 pub use native_registry::NativeCreator;
 
 use crate::{
@@ -58,9 +55,8 @@ impl Interpreter {
     pub fn new() -> Self {
         let builtin_env = Env::builtin_env();
         let global_env = Env::new_with_builtin(builtin_env.clone());
-        global_env.assign("*stdin*", Exp::Native(Shared::new(FileObject::stdin())));
-        global_env.assign("*stdout*", Exp::Native(Shared::new(FileObject::stdout())));
-        global_env.assign("*stderr*", Exp::Native(Shared::new(FileObject::stderr())));
+        namespace::register_all(&global_env);
+
         Self {
             parser: Parser::new(),
             eval: Evaluator::new(),

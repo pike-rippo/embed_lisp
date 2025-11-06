@@ -10,9 +10,8 @@ use crate::{
     GENESYM_COUNTER,
     environment::{Env, SharedEnv},
     error::{Result, SyntaxError},
-    expression::Exp,
+    exp::{Exp, LambdaExp},
     flow::{EvalFlow, EvalResult},
-    lambda::LambdaExp,
     native,
     native_registry::{NativeCreator, NativeRegistry},
     special_forms::{self, begin_impl},
@@ -98,9 +97,12 @@ impl Evaluator {
         }
 
         match exp {
-            Exp::Nil | Exp::Number(_) | Exp::Bool(_) | Exp::String(_) | Exp::Native(_) => {
-                Ok(EvalFlow::Value(exp.clone()))
-            }
+            Exp::Nil
+            | Exp::Number(_)
+            | Exp::Bool(_)
+            | Exp::String(_)
+            | Exp::Native(_)
+            | Exp::Namespace(_) => Ok(EvalFlow::Value(exp.clone())),
             Exp::Function(_) => Err(SyntaxError::unexpected_form("function")),
             Exp::Lambda(_) => Err(SyntaxError::unexpected_form("lambda")),
             Exp::Macro(_) => Err(SyntaxError::unexpected_form("macro")),

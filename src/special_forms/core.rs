@@ -3,9 +3,8 @@ use crate::{
     environment::SharedEnv,
     error::SyntaxError,
     evaluator::Evaluator,
-    expression::Exp,
+    exp::{Exp, LambdaExp},
     flow::{EvalFlow, EvalResult},
-    lambda::LambdaExp,
     typedef::Shared,
 };
 /// 'lambda', 'begin', 'quote', 'for'
@@ -18,6 +17,7 @@ pub fn register(eval: &Evaluator) {
     eval.register_special_form("loop", loop_impl);
     eval.register_special_form("gensym", gensym_impl);
     eval.register_special_form("scope", scope_impl);
+    eval.register_special_form("stringify", stringify_impl);
 
     #[cfg(feature = "async")]
     {
@@ -129,9 +129,17 @@ fn scope_impl(args: &[Exp], env: &SharedEnv, eval: &Evaluator) -> EvalResult {
     begin_impl(args, &child, eval)
 }
 
+fn stringify_impl(args: &[Exp], _env: &SharedEnv, _eval: &Evaluator) -> EvalResult {
+    if args.len() != 1 {
+        return Err(SyntaxError::invalid_args_size("stringify", 1, args.len()));
+    }
+
+    Ok(Exp::String(format!("{}", &args[0])).value_flow())
+}
+
 #[cfg(feature = "async")]
 fn async_impl(args: &[Exp], env: &SharedEnv, eval: &Evaluator) -> EvalResult {
-    use crate::future::FutureExp;
+    use crate::exp::FutureExp;
 
     if args.len() != 1 {
         return Err(SyntaxError::invalid_args_size("async", 1, args.len()));
@@ -142,7 +150,7 @@ fn async_impl(args: &[Exp], env: &SharedEnv, eval: &Evaluator) -> EvalResult {
 
 #[cfg(feature = "async")]
 fn spawn_impl(args: &[Exp], env: &SharedEnv, eval: &Evaluator) -> EvalResult {
-    use crate::task::TaskExp;
+    use crate::exp::TaskExp;
 
     if args.len() != 1 {
         return Err(SyntaxError::invalid_args_size("spawn", 1, args.len()));

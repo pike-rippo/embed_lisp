@@ -1,16 +1,12 @@
-use std::fmt::Display;
-
-use crate::{Evaluator, expression::Exp, flow::EvalResult};
+use crate::Evaluator;
 
 mod file;
 mod hash_map;
 mod hash_set;
 
 pub use file::FileObject;
-
-pub trait NativeObject: Display {
-    fn call_method(&self, name: &str, args: &[Exp]) -> EvalResult;
-}
+pub use hash_map::HashMapObject;
+pub use hash_set::HashSetObject;
 
 pub fn register_all_native_object_creator(eval: &Evaluator) {
     file::register(eval);

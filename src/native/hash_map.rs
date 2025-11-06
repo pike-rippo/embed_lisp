@@ -3,7 +3,10 @@ use std::{collections::HashMap, fmt::Display};
 use parking_lot::RwLock;
 
 use crate::{
-    Evaluator, error::SyntaxError, expression::Exp, flow::EvalResult, native::NativeObject,
+    Evaluator,
+    error::SyntaxError,
+    exp::{Callable, Exp},
+    flow::EvalResult,
     typedef::Shared,
 };
 
@@ -91,7 +94,7 @@ impl Display for HashMapObject {
     }
 }
 
-impl NativeObject for HashMapObject {
+impl Callable for HashMapObject {
     fn call_method(&self, name: &str, args: &[Exp]) -> EvalResult {
         match name {
             "insert" => self.handle_insert(args),

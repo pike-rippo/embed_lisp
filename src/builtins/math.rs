@@ -2,7 +2,7 @@ use crate::{
     environment::SharedEnv,
     error::{Result, SyntaxError},
     evaluator::Evaluator,
-    expression::Exp,
+    exp::Exp,
     flow::EvalResult,
 };
 

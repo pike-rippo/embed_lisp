@@ -1,0 +1,9 @@
+(assign std (namespace
+    (io (namespace
+        (stdin (create-native "File" 0))
+        (stdout (create-native "File" 1))
+        (stderr (create-native "File" 2))))))
+
+(assign file (namespace
+    (open (create-macro (...args)
+        `(create-native "File" ,@args)))))

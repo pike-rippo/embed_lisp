@@ -5,6 +5,7 @@ mod control;
 mod core;
 mod logic;
 mod macros;
+mod namespace;
 mod native;
 
 pub use core::begin_impl;
@@ -14,5 +15,6 @@ pub fn register_all_special_form(eval: &Evaluator) {
     control::register(eval);
     core::register(eval);
     macros::register(eval);
-    native::register(eval);
+    namespace::register(eval);
+    // native::register(eval);
 }

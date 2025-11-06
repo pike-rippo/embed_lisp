@@ -2,7 +2,7 @@ use std::{collections::HashSet, fmt::Display};
 
 use parking_lot::RwLock;
 
-use crate::{Evaluator, Exp, NativeObject, error::SyntaxError, flow::EvalResult, typedef::Shared};
+use crate::{Evaluator, Exp, error::SyntaxError, exp::Callable, flow::EvalResult, typedef::Shared};
 
 pub struct HashSetObject {
     inner: RwLock<HashSet<Exp>>,
@@ -78,7 +78,7 @@ impl Display for HashSetObject {
     }
 }
 
-impl NativeObject for HashSetObject {
+impl Callable for HashSetObject {
     fn call_method(&self, name: &str, args: &[Exp]) -> EvalResult {
         match name {
             "insert" => self.handle_insert(args),

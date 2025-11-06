@@ -4,7 +4,7 @@ use crate::{
     environment::SharedEnv,
     error::{Error, SyntaxError},
     evaluator::Evaluator,
-    expression::Exp,
+    exp::Exp,
     flow::EvalResult,
 };
 
@@ -18,6 +18,7 @@ pub fn register(env: &SharedEnv) {
     env.define("list", Exp::Function(list_impl));
     env.define("append", Exp::Function(append_impl));
     env.define("length", Exp::Function(length_impl));
+    env.define("funcall", Exp::Function(funcall_impl));
     env.define("apply", Exp::Function(apply_impl));
 }
 
@@ -107,6 +108,17 @@ fn length_impl(args: &[Exp], _: &SharedEnv, _: &Evaluator) -> EvalResult {
             return Err(SyntaxError::invalid_args_type("length", "list or string"));
         }
     }
+}
+
+fn funcall_impl(args: &[Exp], env: &SharedEnv, eval: &Evaluator) -> EvalResult {
+    if args.is_empty() {
+        return Err(SyntaxError::not_enough_args("funcall", 1, args.len()));
+    }
+
+    let f = &args[0];
+    let rest_args = &args[1..];
+
+    eval.apply(f.clone(), rest_args, env)
 }
 
 fn apply_impl(args: &[Exp], env: &SharedEnv, eval: &Evaluator) -> EvalResult {

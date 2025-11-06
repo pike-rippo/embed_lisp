@@ -4,13 +4,14 @@ use crate::{
     environment::SharedEnv,
     error::SyntaxError,
     evaluator::Evaluator,
-    expression::Exp,
+    exp::Exp,
     flow::{EvalFlow, EvalResult},
     parser::Parser,
 };
 
 /// 'call', 'range', 'type-of', 'parse', 'eval'
 pub fn register(env: &SharedEnv) {
+    env.define("create-native", Exp::Function(create_native_impl));
     env.define("call", Exp::Function(call_impl));
     env.define("range", Exp::Function(range_impl));
     env.define("type-of", Exp::Function(type_of_impl));
@@ -24,6 +25,24 @@ pub fn register(env: &SharedEnv) {
     {
         env.define("sleep", Exp::Function(sleep_impl));
     }
+}
+
+fn create_native_impl(args: &[Exp], _: &SharedEnv, eval: &Evaluator) -> EvalResult {
+    let (name, args) = args
+        .split_first()
+        // .ok_or("create-native expected at least one argument")?;
+        .ok_or(SyntaxError::not_enough_args("create-native", 2, args.len()))?;
+
+    let Exp::String(name) = name else {
+        // return Err("create-native expected a string as the first argument".into());
+        return Err(SyntaxError::invalid_args_type_nth(
+            "create-native",
+            "string",
+            1,
+        ));
+    };
+
+    eval.create_native_object(name, args)
 }
 
 fn call_impl(args: &[Exp], _: &SharedEnv, _: &Evaluator) -> EvalResult {
@@ -128,7 +147,7 @@ fn return_impl(args: &[Exp], _: &SharedEnv, _: &Evaluator) -> EvalResult {
 fn sleep_impl(_: &[Exp], _: &SharedEnv, _: &Evaluator) -> EvalResult {
     #[cfg(feature = "async")]
     use crate::GLOBAL_RUNTIME;
-    use crate::task::TaskExp;
+    use crate::exp::TaskExp;
 
     let handle = GLOBAL_RUNTIME.spawn(async move {
         tokio::time::sleep(Duration::from_secs(10)).await;
