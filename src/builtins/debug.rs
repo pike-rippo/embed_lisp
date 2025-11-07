@@ -3,10 +3,10 @@ use crate::{
 };
 
 pub fn register(env: &SharedEnv) {
-    env.define("expand-macro", Exp::Function(expand_macro_impl));
-    env.define("dump-env", Exp::Function(dump_env_impl));
-    env.define("trace-eval", Exp::Function(trace_eval_impl));
-    env.define("native-keys", Exp::Function(native_keys_eval_impl));
+    env.define("expand-macro", Exp::Primitive(expand_macro_impl));
+    env.define("dump-env", Exp::Primitive(dump_env_impl));
+    env.define("trace-eval", Exp::Primitive(trace_eval_impl));
+    env.define("native-keys", Exp::Primitive(native_keys_eval_impl));
 }
 
 fn expand_macro_impl(args: &[Exp], env: &SharedEnv, eval: &Evaluator) -> EvalResult {

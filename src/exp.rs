@@ -4,7 +4,7 @@ mod lambda;
 mod namespace;
 mod task;
 
-pub use expression::{BuiltinFunction, Callable, Exp};
+pub use expression::{Callable, Exp, PrimitiveFunction};
 pub use future::FutureExp;
 pub use lambda::LambdaExp;
 pub use namespace::NameSpace;

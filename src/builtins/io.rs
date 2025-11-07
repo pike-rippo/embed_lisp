@@ -1,7 +1,7 @@
 use crate::{environment::SharedEnv, evaluator::Evaluator, exp::Exp, flow::EvalResult};
 
 pub fn register(env: &SharedEnv) {
-    env.define("print", Exp::Function(print_impl));
+    env.define("print", Exp::Primitive(print_impl));
 }
 
 fn print_impl(args: &[Exp], _: &SharedEnv, _: &Evaluator) -> EvalResult {

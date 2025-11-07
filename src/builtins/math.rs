@@ -8,11 +8,11 @@ use crate::{
 
 /// '+', '+', '-', '/'
 pub fn register(env: &SharedEnv) {
-    env.define("+", Exp::Function(add_impl));
-    env.define("*", Exp::Function(mul_impl));
-    env.define("-", Exp::Function(sub_impl));
-    env.define("/", Exp::Function(div_impl));
-    env.define("%", Exp::Function(mod_impl));
+    env.define("+", Exp::Primitive(add_impl));
+    env.define("*", Exp::Primitive(mul_impl));
+    env.define("-", Exp::Primitive(sub_impl));
+    env.define("/", Exp::Primitive(div_impl));
+    env.define("%", Exp::Primitive(mod_impl));
 }
 
 pub fn parse_list_of_floats(name: &str, args: &[Exp]) -> Result<Vec<f64>> {

@@ -7,7 +7,6 @@ mod io;
 mod list;
 mod math;
 mod namespace;
-mod string;
 
 pub fn register_all(env: &SharedEnv) {
     compare::register(env);
@@ -17,5 +16,4 @@ pub fn register_all(env: &SharedEnv) {
     list::register(env);
     math::register(env);
     namespace::register(env);
-    // string::register(env);
 }

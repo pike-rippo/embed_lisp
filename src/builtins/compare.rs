@@ -28,13 +28,13 @@ macro_rules! ensure_tonicity {
 //ok!(f(first, rest))
 /// '=', '>', '>=', '<', '<=', 'null?', 'eq?'
 pub fn register(env: &SharedEnv) {
-    env.define("=", Exp::Function(ensure_tonicity!("=", |a, b| a == b)));
-    env.define(">", Exp::Function(ensure_tonicity!(">", |a, b| a > b)));
-    env.define(">=", Exp::Function(ensure_tonicity!(">=", |a, b| a >= b)));
-    env.define("<", Exp::Function(ensure_tonicity!("<", |a, b| a < b)));
-    env.define("<=", Exp::Function(ensure_tonicity!("<=", |a, b| a <= b)));
-    env.define("null?", Exp::Function(null_impl));
-    env.define("eq?", Exp::Function(eq_impl));
+    env.define("=", Exp::Primitive(ensure_tonicity!("=", |a, b| a == b)));
+    env.define(">", Exp::Primitive(ensure_tonicity!(">", |a, b| a > b)));
+    env.define(">=", Exp::Primitive(ensure_tonicity!(">=", |a, b| a >= b)));
+    env.define("<", Exp::Primitive(ensure_tonicity!("<", |a, b| a < b)));
+    env.define("<=", Exp::Primitive(ensure_tonicity!("<=", |a, b| a <= b)));
+    env.define("null?", Exp::Primitive(null_impl));
+    env.define("eq?", Exp::Primitive(eq_impl));
 }
 
 fn null_impl(args: &[Exp], _: &SharedEnv, _: &Evaluator) -> EvalResult {

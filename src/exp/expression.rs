@@ -1,5 +1,4 @@
 use std::{
-    collections::HashMap,
     fmt::Display,
     hash::{Hash, Hasher},
 };
@@ -27,7 +26,7 @@ pub type SharedNativeObject = Shared<dyn Callable>;
 #[cfg(feature = "async")]
 pub type SharedNativeObject = Shared<dyn Callable + Send + Sync>;
 
-pub type BuiltinFunction = fn(&[Exp], &SharedEnv, &Evaluator) -> EvalResult;
+pub type PrimitiveFunction = fn(&[Exp], &SharedEnv, &Evaluator) -> EvalResult;
 
 #[derive(Clone)]
 pub enum Exp {
@@ -38,7 +37,7 @@ pub enum Exp {
     List(Vec<Exp>),
     DottedList(Vec<Exp>, Shared<Exp>),
     Symbol(String),
-    Function(BuiltinFunction),
+    Primitive(PrimitiveFunction),
     Lambda(LambdaExp),
     Macro(LambdaExp),
     Native(SharedNativeObject),
@@ -103,7 +102,7 @@ impl std::fmt::Debug for Exp {
                 tail
             ),
             Self::Symbol(s) => write!(f, "Exp::Symbol({})", s),
-            Self::Function(_) => write!(f, "Exp::Function()"),
+            Self::Primitive(_) => write!(f, "Exp::Primitive()"),
             Self::Lambda(lambda) => write!(f, "Exp::Lambda({:?})", lambda),
             Self::Macro(lambda) => write!(f, "Exp::Macro({:?})", lambda),
             Self::Native(native) => write!(f, "Exp::Native({})", native),
@@ -159,7 +158,7 @@ impl std::fmt::Display for Exp {
                 tail
             ),
             Self::Symbol(s) => s.clone(),
-            Self::Function(_) => "Function".to_string(),
+            Self::Primitive(_) => "Primitive".to_string(),
             Self::Lambda(lambda) => {
                 format!(
                     "Lambda {{ {} -> {} }}",
@@ -266,7 +265,7 @@ impl Exp {
             Exp::List(_) => "List".to_string(),
             Exp::DottedList(_, _) => "DottedList".to_string(),
             Exp::Symbol(_) => "Symbol".to_string(),
-            Exp::Function(_) => "Function".to_string(),
+            Exp::Primitive(_) => "Primitive".to_string(),
             Exp::Lambda(_) => "Lambda".to_string(),
             Exp::Macro(_) => "Macro".to_string(),
             Exp::Native(native) => format!("Native {{ {} }}", native),
@@ -289,7 +288,7 @@ impl Exp {
     pub fn check_key_allowed(&self) -> Result<()> {
         #[cfg(not(feature = "async"))]
         match self {
-            Exp::Native(_) | Exp::Function(_) | Exp::Lambda(_) | Exp::Macro(_) => {
+            Exp::Native(_) | Exp::Primitive(_) | Exp::Lambda(_) | Exp::Macro(_) => {
                 Err(Error::reason("invalid key type"))
             }
             _ => Ok(()),
@@ -298,7 +297,7 @@ impl Exp {
         #[cfg(feature = "async")]
         match self {
             Exp::Native(_)
-            | Exp::Function(_)
+            | Exp::Primitive(_)
             | Exp::Lambda(_)
             | Exp::Macro(_)
             | Exp::Future(_)

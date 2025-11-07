@@ -27,15 +27,13 @@ pub static GENESYM_COUNTER: AtomicUsize = AtomicUsize::new(0);
 
 pub use error::Error;
 pub use evaluator::{Evaluator, SpecialFormFn};
-pub use exp::{BuiltinFunction, Callable, Exp};
+pub use exp::{Callable, Exp, PrimitiveFunction};
 pub use native_registry::NativeCreator;
 
 use crate::{
     environment::{Env, SharedEnv},
     flow::EvalResult,
-    native::FileObject,
     parser::Parser,
-    typedef::Shared,
 };
 
 pub struct Interpreter {

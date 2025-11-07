@@ -12,7 +12,7 @@ pub fn register(eval: &Evaluator) {
     eval.register_special_form("define-macro", define_macro_impl);
 }
 
-fn create_macro_impl(args: &[Exp], env: &SharedEnv, _: &Evaluator) -> EvalResult {
+fn create_macro_impl(args: &[Exp], _env: &SharedEnv, _: &Evaluator) -> EvalResult {
     if args.len() < 2 {
         return Err(SyntaxError::invalid_args_size(
             "create-macro",
@@ -20,17 +20,6 @@ fn create_macro_impl(args: &[Exp], env: &SharedEnv, _: &Evaluator) -> EvalResult
             args.len(),
         ));
     }
-
-    // let name = match &args[0] {
-    //     Exp::Symbol(s) => s,
-    //     _ => {
-    //         return Err(SyntaxError::invalid_args_type_nth(
-    //             "define-macro",
-    //             "symbol",
-    //             1,
-    //         ));
-    //     }
-    // };
 
     if !matches!(args[0], Exp::List(_) | Exp::DottedList(_, _)) {
         return Err(SyntaxError::invalid_args_type_nth(

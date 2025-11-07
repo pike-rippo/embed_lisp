@@ -8,9 +8,9 @@ use crate::{
 };
 
 pub fn register(env: &SharedEnv) {
-    env.define("create-namespace", Exp::Function(create_namespace_impl));
-    env.define("ns-get", Exp::Function(ns_get_impl));
-    env.define("use", Exp::Function(use_impl));
+    env.define("create-namespace", Exp::Primitive(create_namespace_impl));
+    env.define("ns-get", Exp::Primitive(ns_get_impl));
+    env.define("use", Exp::Primitive(use_impl));
 }
 
 fn create_namespace_impl(args: &[Exp], _: &SharedEnv, _: &Evaluator) -> EvalResult {
@@ -50,7 +50,7 @@ fn use_impl(args: &[Exp], env: &SharedEnv, _: &Evaluator) -> EvalResult {
         return Err(SyntaxError::invalid_args_type_nth("use", "namespace", 1));
     };
 
-    // ns.expand(env);
+    ns.expand(env);
 
     Ok(Exp::Bool(true).value_flow())
 }

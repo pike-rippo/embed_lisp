@@ -11,19 +11,19 @@ use crate::{
 
 /// 'call', 'range', 'type-of', 'parse', 'eval'
 pub fn register(env: &SharedEnv) {
-    env.define("create-native", Exp::Function(create_native_impl));
-    env.define("call", Exp::Function(call_impl));
-    env.define("range", Exp::Function(range_impl));
-    env.define("type-of", Exp::Function(type_of_impl));
-    env.define("parse", Exp::Function(parse_impl));
-    env.define("eval", Exp::Function(eval_impl));
-    env.define("break", Exp::Function(break_impl));
-    env.define("continue", Exp::Function(continue_impl));
-    env.define("return", Exp::Function(return_impl));
+    env.define("create-native", Exp::Primitive(create_native_impl));
+    env.define("call", Exp::Primitive(call_impl));
+    env.define("range", Exp::Primitive(range_impl));
+    env.define("type-of", Exp::Primitive(type_of_impl));
+    env.define("parse", Exp::Primitive(parse_impl));
+    env.define("eval", Exp::Primitive(eval_impl));
+    env.define("break", Exp::Primitive(break_impl));
+    env.define("continue", Exp::Primitive(continue_impl));
+    env.define("return", Exp::Primitive(return_impl));
 
     #[cfg(feature = "async")]
     {
-        env.define("sleep", Exp::Function(sleep_impl));
+        env.define("sleep", Exp::Primitive(sleep_impl));
     }
 }
 

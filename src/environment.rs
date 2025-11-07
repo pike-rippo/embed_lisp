@@ -100,36 +100,19 @@ impl Env {
         } else {
             self.parent.as_ref().unwrap().assign(k, v)
         }
-
-        // if self.level == 1 {
-        //     self.define(k, v)
-        // } else {
-        //     let global = self.find_env_by_level(1).unwrap();
-        //     global.define(k, v)
-        // }
-
-        // if k.starts_with('*') && k.ends_with('*') && k.len() > 1 {
-        //     if self.level == 1 {
-        //         return self.define(k, v);
-        //     } else {
-        //         let global = self.find_env_by_level(1).unwrap();
-        //         return global.define(k, v);
-        //     }
-        // }
-
-        // if self.current.read().contains_key(k) {
-        //     return self.define(k, v);
-        // }
-
-        // if let Some(parent) = self.find_env_by_key(k) {
-        //     parent.define(k, v)
-        // } else {
-        //     Exp::Nil
-        // }
     }
 
-    pub fn drop_symbol(&self, l: &str) -> Exp {
-        self.current.write().remove(l).unwrap_or(Exp::Nil)
+    pub fn drop_symbol(&self, k: &str) -> Exp {
+        // self.current.write().remove(l).unwrap_or(Exp::Nil)
+        if self.current.read().contains_key(k) {
+            self.current.write().remove(k).unwrap_or(Exp::Nil)
+        } else {
+            if let Some(parent) = self.parent.as_ref() {
+                parent.drop_symbol(k)
+            } else {
+                Exp::Nil
+            }
+        }
     }
 
     pub fn find_env_by_level(&self, level: u8) -> Option<SharedEnv> {
@@ -149,8 +132,6 @@ impl Env {
         match &self.parent {
             None => None,
             Some(parent) => {
-                // let found = parent.find_env_by_key(k);
-                // found.or_else(|| Some(parent.clone()))
                 if parent.current.read().contains_key(k) {
                     Some(parent.clone())
                 } else {
@@ -200,7 +181,7 @@ impl Env {
         } else {
             &(self.level - 1).to_string()[..]
         };
-        println!("Level: {}", level);
+        println!("\nLevel: {}", level);
 
         if self.current.read().is_empty() {
             println!("   EMPTY");

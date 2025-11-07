@@ -10,22 +10,22 @@ use crate::{
 pub fn register(env: &SharedEnv) {
     let ns = NameSpace::default();
 
-    ns.define("string", Exp::Function(string_impl));
-    ns.define("concat", Exp::Function(concat_impl));
-    ns.define("substr", Exp::Function(substr_impl));
-    ns.define("char-at", Exp::Function(char_at_impl));
-    ns.define("index-of", Exp::Function(index_of_impl));
-    ns.define("starts-with?", Exp::Function(starts_with_impl));
-    ns.define("ends-with?", Exp::Function(ends_with_impl));
-    ns.define("contains?", Exp::Function(contains_impl));
-    ns.define("replace", Exp::Function(replace_impl));
-    ns.define("split", Exp::Function(split_impl));
-    ns.define("join", Exp::Function(join_impl));
+    ns.define("string", Exp::Primitive(string_impl));
+    ns.define("concat", Exp::Primitive(concat_impl));
+    ns.define("substr", Exp::Primitive(substr_impl));
+    ns.define("char-at", Exp::Primitive(char_at_impl));
+    ns.define("index-of", Exp::Primitive(index_of_impl));
+    ns.define("starts-with?", Exp::Primitive(starts_with_impl));
+    ns.define("ends-with?", Exp::Primitive(ends_with_impl));
+    ns.define("contains?", Exp::Primitive(contains_impl));
+    ns.define("replace", Exp::Primitive(replace_impl));
+    ns.define("split", Exp::Primitive(split_impl));
+    ns.define("join", Exp::Primitive(join_impl));
 
-    ns.define("trim", Exp::Function(trim_impl));
-    ns.define("to-upper", Exp::Function(to_upper_impl));
-    ns.define("to-lower", Exp::Function(to_lower_impl));
-    ns.define("repeat", Exp::Function(repeat_impl));
+    ns.define("trim", Exp::Primitive(trim_impl));
+    ns.define("to-upper", Exp::Primitive(to_upper_impl));
+    ns.define("to-lower", Exp::Primitive(to_lower_impl));
+    ns.define("repeat", Exp::Primitive(repeat_impl));
 
     env.assign("str", Exp::Namespace(Shared::new(ns)));
 }

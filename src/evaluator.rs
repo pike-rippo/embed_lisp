@@ -103,7 +103,7 @@ impl Evaluator {
             | Exp::String(_)
             | Exp::Native(_)
             | Exp::Namespace(_) => Ok(EvalFlow::Value(exp.clone())),
-            Exp::Function(_) => Err(SyntaxError::unexpected_form("function")),
+            Exp::Primitive(_) => Err(SyntaxError::unexpected_form("function")),
             Exp::Lambda(_) => Err(SyntaxError::unexpected_form("lambda")),
             Exp::Macro(_) => Err(SyntaxError::unexpected_form("macro")),
             Exp::DottedList(_, _) => Err(SyntaxError::unexpected_form("dotted list")),
@@ -131,7 +131,7 @@ impl Evaluator {
 
     pub fn apply(&self, exp: Exp, args: &[Exp], env: &SharedEnv) -> EvalResult {
         match exp {
-            Exp::Function(f) => Ok(f(&self.eval_form(args, env)?, env, self)?),
+            Exp::Primitive(f) => Ok(f(&self.eval_form(args, env)?, env, self)?),
             Exp::Lambda(lambda) => self.apply_lambda(lambda, args, env),
             Exp::Macro(lambda) => self.apply_macro(lambda, args, env),
             _ => Err(SyntaxError::unexpected_form("function, lambda or macro")),

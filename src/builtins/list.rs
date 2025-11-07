@@ -8,18 +8,18 @@ use crate::{
     flow::EvalResult,
 };
 
-// Exp::Function(|args: &[Exp], _: &SharedEnv, _: &Evaluator| -> EvalResult {})
+// Exp::Primitive(|args: &[Exp], _: &SharedEnv, _: &Evaluator| -> EvalResult {})
 
 /// 'car', 'cdr', 'cons', 'list', 'append', 'length', 'apply'
 pub fn register(env: &SharedEnv) {
-    env.define("car", Exp::Function(car_impl));
-    env.define("cdr", Exp::Function(cdr_impl));
-    env.define("cons", Exp::Function(cons_impl));
-    env.define("list", Exp::Function(list_impl));
-    env.define("append", Exp::Function(append_impl));
-    env.define("length", Exp::Function(length_impl));
-    env.define("funcall", Exp::Function(funcall_impl));
-    env.define("apply", Exp::Function(apply_impl));
+    env.define("car", Exp::Primitive(car_impl));
+    env.define("cdr", Exp::Primitive(cdr_impl));
+    env.define("cons", Exp::Primitive(cons_impl));
+    env.define("list", Exp::Primitive(list_impl));
+    env.define("append", Exp::Primitive(append_impl));
+    env.define("length", Exp::Primitive(length_impl));
+    env.define("funcall", Exp::Primitive(funcall_impl));
+    env.define("apply", Exp::Primitive(apply_impl));
 }
 
 fn car_impl(args: &[Exp], _: &SharedEnv, _: &Evaluator) -> EvalResult {
