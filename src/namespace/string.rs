@@ -10,6 +10,7 @@ use crate::{
 pub fn register(env: &SharedEnv) {
     let ns = NameSpace::default();
 
+    ns.define("symbol", Exp::Primitive(symbol_impl));
     ns.define("string", Exp::Primitive(string_impl));
     ns.define("concat", Exp::Primitive(concat_impl));
     ns.define("substr", Exp::Primitive(substr_impl));
@@ -37,9 +38,21 @@ fn extract_string<'a>(func_name: &'static str, e: &'a Exp) -> Result<&'a String>
     }
 }
 
+fn symbol_impl(args: &[Exp], env: &SharedEnv, eval: &Evaluator) -> EvalResult {
+    if args.len() != 1 {
+        return Err(SyntaxError::invalid_args_size("symbol", 1, args.len()));
+    }
+
+    let Exp::String(s) = &args[0] else {
+        return Err(SyntaxError::invalid_args_type("symbol", "string"));
+    };
+
+    Ok(Exp::Symbol(s.clone()).value_flow())
+}
+
 fn string_impl(args: &[Exp], env: &SharedEnv, eval: &Evaluator) -> EvalResult {
     if args.len() != 1 {
-        return Err(SyntaxError::invalid_args_size("stringify", 1, args.len()));
+        return Err(SyntaxError::invalid_args_size("string", 1, args.len()));
     }
 
     Ok(Exp::String(format!("{}", eval.eval(&args[0], env)?.try_unwrap()?)).value_flow())

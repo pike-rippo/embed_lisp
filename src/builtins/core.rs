@@ -1,6 +1,7 @@
 use std::time::Duration;
 
 use crate::{
+    Error,
     environment::SharedEnv,
     error::SyntaxError,
     evaluator::Evaluator,
@@ -20,6 +21,7 @@ pub fn register(env: &SharedEnv) {
     env.define("break", Exp::Primitive(break_impl));
     env.define("continue", Exp::Primitive(continue_impl));
     env.define("return", Exp::Primitive(return_impl));
+    env.define("raise", Exp::Primitive(raise_impl));
 
     #[cfg(feature = "async")]
     {
@@ -135,12 +137,19 @@ fn return_impl(args: &[Exp], _: &SharedEnv, _: &Evaluator) -> EvalResult {
             "'return' expected at most one argument",
         ));
     }
-    // if args.is_empty() {
-    //     Ok(Exp::Nil.value_flow())
-    // } else {
-    //     eval.eval(&args[0], env)
-    // }
     Ok(EvalFlow::Return(args.get(0).cloned().unwrap_or(Exp::Nil)))
+}
+
+fn raise_impl(args: &[Exp], _: &SharedEnv, _: &Evaluator) -> EvalResult {
+    if args.len() > 1 {
+        return Err(SyntaxError::invalid_args_size("raise", 1, args.len()));
+    }
+
+    let Exp::String(msg) = &args[0] else {
+        return Err(SyntaxError::invalid_args_type("raise", "string"));
+    };
+
+    Err(Error::Reason(msg.clone()))
 }
 
 #[cfg(feature = "async")]

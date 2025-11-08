@@ -20,6 +20,7 @@ pub fn register(eval: &Evaluator) {
     eval.register_special_form("scope", scope_impl);
     eval.register_special_form("stringify", stringify_impl);
     eval.register_special_form("recur", recur_impl);
+    eval.register_special_form("try", try_impl);
 
     #[cfg(feature = "async")]
     {
@@ -156,6 +157,41 @@ fn stringify_impl(args: &[Exp], _env: &SharedEnv, _eval: &Evaluator) -> EvalResu
 fn recur_impl(args: &[Exp], env: &SharedEnv, eval: &Evaluator) -> EvalResult {
     let values = eval.eval_form(args, env)?;
     Ok(EvalFlow::TailCall(values))
+}
+
+fn try_impl(args: &[Exp], env: &SharedEnv, eval: &Evaluator) -> EvalResult {
+    if args.len() != 2 {
+        return Err(SyntaxError::not_enough_args("try", 2, args.len()));
+    }
+
+    let try_block = &args[0];
+    let catch_form = &args[1];
+
+    let Exp::List(catch_parts) = catch_form else {
+        return Err(SyntaxError::invalid_args_type("catch form", "list"));
+    };
+
+    if catch_parts.len() < 2 {
+        return Err(SyntaxError::not_enough_args("catch", 2, catch_parts.len()));
+    }
+
+    let Exp::Symbol(_) = &catch_parts[0] else {
+        return Err(SyntaxError::invalid_args_type("catch", "symbol"));
+    };
+
+    let Exp::Symbol(var_name) = &catch_parts[1] else {
+        return Err(SyntaxError::invalid_args_type_nth("catch", "symbol", 2));
+    };
+
+    let catch_body = &catch_parts[2..];
+    match eval.eval(try_block, env) {
+        Ok(v) => Ok(v),
+        Err(e) => {
+            let child = Env::new_child(env.clone());
+            child.define(var_name, Exp::String(e.to_string()));
+            begin_impl(catch_body, &child, eval)
+        }
+    }
 }
 
 #[cfg(feature = "async")]
