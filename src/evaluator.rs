@@ -105,6 +105,7 @@ impl Evaluator {
             | Exp::Namespace(_) => Ok(EvalFlow::Value(exp.clone())),
             Exp::Primitive(_) => Err(SyntaxError::unexpected_form("function")),
             Exp::Lambda(_) => Err(SyntaxError::unexpected_form("lambda")),
+            Exp::RecurLambda(_, _) => Err(SyntaxError::unexpected_form("recur-lambda")),
             Exp::Macro(_) => Err(SyntaxError::unexpected_form("macro")),
             Exp::DottedList(_, _) => Err(SyntaxError::unexpected_form("dotted list")),
             Exp::Symbol(k) => Ok(env.try_lookup(k)?.value_flow()),
@@ -133,6 +134,7 @@ impl Evaluator {
         match exp {
             Exp::Primitive(f) => Ok(f(&self.eval_form(args, env)?, env, self)?),
             Exp::Lambda(lambda) => self.apply_lambda(lambda, args, env),
+            Exp::RecurLambda(init, lambda) => self.apply_recur_lambda(init, lambda, args, env),
             Exp::Macro(lambda) => self.apply_macro(lambda, args, env),
             _ => Err(SyntaxError::unexpected_form("function, lambda or macro")),
         }
@@ -149,9 +151,37 @@ impl Evaluator {
     }
 
     fn apply_lambda(&self, lambda: LambdaExp, args: &[Exp], env: &SharedEnv) -> EvalResult {
-        let values = self.eval_form(args, env)?;
-        let child = self.env_extend(&lambda.params_exp, &values, env)?;
-        begin_impl(&lambda.body_exp, &child, self)
+        let mut values = self.eval_form(args, env)?;
+        let keys = parse_list_of_symbol_strings(&lambda.params_exp)?;
+        let is_dotted = lambda.params_exp.is_dotted_list();
+        let child = self.new_child_with_binding(&keys, &values, env, is_dotted)?;
+        loop {
+            match begin_impl(&lambda.body_exp, &child, self)? {
+                EvalFlow::TailCall(new_values) => {
+                    values = new_values;
+                    if is_dotted {
+                        child.extend_dotted(&keys, &values);
+                    } else {
+                        child.extend(&keys, &values);
+                    }
+                    continue;
+                }
+                otherwise => return Ok(otherwise),
+            }
+        }
+    }
+
+    fn apply_recur_lambda(
+        &self,
+        init: Shared<Exp>,
+        lambda: LambdaExp,
+        args: &[Exp],
+        env: &SharedEnv,
+    ) -> EvalResult {
+        let mut new_args: Vec<Exp> = Vec::with_capacity(args.len() + 1);
+        new_args.push((*init).clone());
+        new_args.extend_from_slice(args);
+        self.apply_lambda(lambda, &new_args, env)
     }
 
     fn apply_macro(&self, lambda: LambdaExp, args: &[Exp], env: &SharedEnv) -> EvalResult {
@@ -160,22 +190,23 @@ impl Evaluator {
     }
 
     pub fn expand_macro(&self, lambda: LambdaExp, args: &[Exp], env: &SharedEnv) -> EvalResult {
-        let child = self.env_extend(&lambda.params_exp, args, env)?;
+        let keys = parse_list_of_symbol_strings(&lambda.params_exp)?;
+        let child =
+            self.new_child_with_binding(&keys, args, env, lambda.params_exp.is_dotted_list())?;
         begin_impl(&lambda.body_exp, &child, self)
     }
 
-    pub fn env_extend(
+    pub fn new_child_with_binding(
         &self,
-        params: &Shared<Exp>,
+        keys: &[String],
         args: &[Exp],
         env: &SharedEnv,
+        is_dotted: bool,
     ) -> Result<SharedEnv> {
-        let is_dotted = params.is_dotted_list();
-        let keys = parse_list_of_symbol_strings(params)?;
         if is_dotted {
-            Ok(Env::extend_dotted(env.clone(), &keys, args))
+            Ok(Env::new_child_with_binding_dotted(env.clone(), &keys, args))
         } else if keys.len() == args.len() {
-            Ok(Env::extend(env.clone(), &keys, args))
+            Ok(Env::new_child_with_binding(env.clone(), &keys, args))
         } else {
             Err(SyntaxError::Reason(format!(
                 "expected {} arguments, got {}",

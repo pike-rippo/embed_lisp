@@ -5,7 +5,7 @@ use embed_lisp::Interpreter;
 
 fn read_line(depth: i32, input: &mut String) {
     if depth == 0 {
-        print!("[depth {}]  > ", depth);
+        print!("[depth {}] }}> ", depth);
     } else {
         print!("[depth {}] *> ", depth);
     }

@@ -52,7 +52,7 @@ impl Env {
         })
     }
 
-    pub fn extend(parent: SharedEnv, keys: &[String], values: &[Exp]) -> SharedEnv {
+    pub fn new_child_with_binding(parent: SharedEnv, keys: &[String], values: &[Exp]) -> SharedEnv {
         let child = Env::new_child(parent);
         {
             let mut current = child.current.write();
@@ -63,7 +63,11 @@ impl Env {
         child
     }
 
-    pub fn extend_dotted(parent: SharedEnv, keys: &[String], values: &[Exp]) -> SharedEnv {
+    pub fn new_child_with_binding_dotted(
+        parent: SharedEnv,
+        keys: &[String],
+        values: &[Exp],
+    ) -> SharedEnv {
         let child = Env::new_child(parent);
         let (tail, keys) = keys.split_last().expect("extend dotted");
         let (pairs, _, values) = zip_with_remainder_iter(keys.iter(), values.iter());
@@ -105,6 +109,21 @@ impl Env {
         } else {
             self.parent.as_ref().unwrap().assign(k, v)
         }
+    }
+
+    pub fn extend(&self, keys: &[String], values: &[Exp]) {
+        for (key, value) in keys.iter().zip(values.iter()) {
+            self.define(key, value.clone());
+        }
+    }
+
+    pub fn extend_dotted(&self, keys: &[String], values: &[Exp]) {
+        let (tail, keys) = keys.split_last().expect("extend dotted");
+        let (pairs, _, values) = zip_with_remainder_iter(keys.iter(), values.iter());
+        for (key, value) in pairs {
+            self.define(key, value.clone());
+        }
+        self.define(tail, Exp::List(values.cloned().collect::<Vec<Exp>>()));
     }
 
     pub fn drop_symbol(&self, k: &str) -> Exp {

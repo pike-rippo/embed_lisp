@@ -40,6 +40,7 @@ pub enum Exp {
     Symbol(String),
     Primitive(PrimitiveFunction),
     Lambda(LambdaExp),
+    RecurLambda(Shared<Exp>, LambdaExp),
     Macro(LambdaExp),
     Native(SharedNativeObject),
     Namespace(Shared<NameSpace>),
@@ -112,6 +113,9 @@ impl std::fmt::Debug for Exp {
             Self::Symbol(s) => write!(f, "Exp::Symbol({})", s),
             Self::Primitive(function) => write!(f, "Exp::Primitive({:?})", function),
             Self::Lambda(lambda) => write!(f, "Exp::Lambda({:?})", lambda),
+            Self::RecurLambda(init, lambda) => {
+                write!(f, "Exp::RecurLambda({:?} {:?})", init, lambda)
+            }
             Self::Macro(lambda) => write!(f, "Exp::Macro({:?})", lambda),
             Self::Native(native) => write!(f, "Exp::Native({})", native),
             Self::Namespace(_) => write!(f, "Exp::Namespace()"),
@@ -165,6 +169,19 @@ impl std::fmt::Display for Exp {
             Self::Lambda(lambda) => {
                 format!(
                     "Lambda {{ {} -> {} }}",
+                    lambda.params_exp,
+                    lambda
+                        .body_exp
+                        .iter()
+                        .map(|e| format!("{}", e))
+                        .collect::<Vec<String>>()
+                        .join(" ")
+                )
+            }
+            Self::RecurLambda(init, lambda) => {
+                format!(
+                    "Lambda {{ {} {} -> {} }}",
+                    init,
                     lambda.params_exp,
                     lambda
                         .body_exp
@@ -269,6 +286,7 @@ impl Exp {
             Exp::Symbol(_) => "Symbol".to_string(),
             Exp::Primitive(_) => "Primitive".to_string(),
             Exp::Lambda(_) => "Lambda".to_string(),
+            Exp::RecurLambda(_, _) => "RecurLambda".to_string(),
             Exp::Macro(_) => "Macro".to_string(),
             Exp::Native(native) => format!("Native {{ {} }}", native),
             Exp::Namespace(_) => format!("Namespace"),

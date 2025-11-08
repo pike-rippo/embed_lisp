@@ -10,6 +10,7 @@ use crate::{
 /// 'lambda', 'begin', 'quote', 'for'
 pub fn register(eval: &Evaluator) {
     eval.register_special_form("lambda", lambda_impl);
+    eval.register_special_form("recur-lambda", recur_lambda_impl);
     eval.register_special_form("begin", begin_impl);
     eval.register_special_form("quote", quote_impl);
     eval.register_special_form("quasiquote", quasiquote_impl);
@@ -18,6 +19,7 @@ pub fn register(eval: &Evaluator) {
     eval.register_special_form("gensym", gensym_impl);
     eval.register_special_form("scope", scope_impl);
     eval.register_special_form("stringify", stringify_impl);
+    eval.register_special_form("recur", recur_impl);
 
     #[cfg(feature = "async")]
     {
@@ -42,15 +44,29 @@ fn lambda_impl(args: &[Exp], _: &SharedEnv, _: &Evaluator) -> EvalResult {
     .value_flow())
 }
 
+fn recur_lambda_impl(args: &[Exp], _: &SharedEnv, _: &Evaluator) -> EvalResult {
+    if args.len() < 3 {
+        return Err(SyntaxError::not_enough_args("recur-lambda", 3, args.len()));
+    }
+
+    let init = &args[0];
+    let params_exp = &args[1];
+    let body = &args[2..];
+
+    Ok(Exp::RecurLambda(
+        Shared::new(init.clone()),
+        LambdaExp::new(Shared::new(params_exp.clone()), Vec::from(body)),
+    )
+    .value_flow())
+}
+
 pub fn begin_impl(args: &[Exp], env: &SharedEnv, eval: &Evaluator) -> EvalResult {
     let mut last = Exp::Nil;
 
     for form in args {
         match eval.eval(form, env)? {
             EvalFlow::Value(v) => last = v,
-            flow @ EvalFlow::Break => return Ok(flow),
-            flow @ EvalFlow::Continue => return Ok(flow),
-            flow @ EvalFlow::Return(_) => return Ok(flow),
+            otherwise => return Ok(otherwise),
         }
     }
 
@@ -103,7 +119,7 @@ fn for_each_impl(args: &[Exp], env: &SharedEnv, eval: &Evaluator) -> EvalResult 
             EvalFlow::Value(exp) => result = exp,
             EvalFlow::Continue => continue,
             EvalFlow::Break => return Ok(Exp::Nil.value_flow()),
-            flow @ EvalFlow::Return(_) => return Ok(flow),
+            otherwise => return Ok(otherwise),
         }
     }
     Ok(result.value_flow())
@@ -115,7 +131,7 @@ fn loop_impl(args: &[Exp], env: &SharedEnv, eval: &Evaluator) -> EvalResult {
             EvalFlow::Value(_) => {}
             EvalFlow::Continue => continue,
             EvalFlow::Break => return Ok(Exp::Nil.value_flow()),
-            flow @ EvalFlow::Return(_) => return Ok(flow),
+            otherwise => return Ok(otherwise),
         }
     }
 }
@@ -135,6 +151,11 @@ fn stringify_impl(args: &[Exp], _env: &SharedEnv, _eval: &Evaluator) -> EvalResu
     }
 
     Ok(Exp::String(format!("{}", &args[0])).value_flow())
+}
+
+fn recur_impl(args: &[Exp], env: &SharedEnv, eval: &Evaluator) -> EvalResult {
+    let values = eval.eval_form(args, env)?;
+    Ok(EvalFlow::TailCall(values))
 }
 
 #[cfg(feature = "async")]

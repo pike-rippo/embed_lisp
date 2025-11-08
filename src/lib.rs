@@ -59,7 +59,7 @@ impl Interpreter {
         Self {
             parser: Parser::new(),
             eval: Evaluator::new(),
-            env: Env::extend(global_env, &[], &[]),
+            env: Env::new_child_with_binding(global_env, &[], &[]),
             builtin_env,
         }
     }

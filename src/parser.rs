@@ -18,7 +18,8 @@ impl Parser {
             .insert_whitespaces_outside_double_quote(&[
                 ("(", None, None),
                 (")", None, None),
-                ("'", Some('#'), None),
+                // ("'", Some('#'), None),
+                ("'", None, None),
                 ("`", None, None),
                 (",", None, Some('@')),
                 (",@", None, None),
