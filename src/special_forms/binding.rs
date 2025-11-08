@@ -10,6 +10,7 @@ use crate::{
 
 pub fn register(eval: &Evaluator) {
     eval.register_special_form("define", define_impl);
+    eval.register_special_form("define-at", define_at_impl);
     eval.register_special_form("assign", assign_impl);
     eval.register_special_form("drop", drop_impl);
     eval.register_special_form("let", |args, env, eval| let_impl(args, env, eval, false));
@@ -25,8 +26,29 @@ fn define_impl(args: &[Exp], env: &SharedEnv, eval: &Evaluator) -> EvalResult {
         return Err(SyntaxError::invalid_args_type_nth("define", "symbol", 1));
     };
 
-    let v = eval.eval(args.get(1).unwrap(), env)?;
+    let v = eval.eval(&args[1], env)?;
     Ok(env.define(k, v.try_unwrap()?).value_flow())
+}
+
+fn define_at_impl(args: &[Exp], env: &SharedEnv, eval: &Evaluator) -> EvalResult {
+    if args.len() != 3 {
+        return Err(SyntaxError::invalid_args_size("define-at", 2, args.len()));
+    }
+
+    let Some(Exp::Number(l)) = args.first() else {
+        return Err(SyntaxError::invalid_args_type_nth("define-at", "number", 1));
+    };
+
+    // let level = match &args[0] {
+    //     Exp::Number(n) =>
+    // }
+
+    let Some(Exp::Symbol(k)) = args.get(1) else {
+        return Err(SyntaxError::invalid_args_type_nth("define-at", "symbol", 2));
+    };
+
+    let v = eval.eval(&args[2], env)?;
+    Ok(env.define_at(*l as usize, k, v.try_unwrap()?).value_flow())
 }
 
 fn assign_impl(args: &[Exp], env: &SharedEnv, eval: &Evaluator) -> EvalResult {

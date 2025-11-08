@@ -16,7 +16,7 @@ pub type SharedEnv = Shared<Env>;
 pub struct Env {
     current: RwLock<HashMap<String, Exp>>,
     parent: Option<SharedEnv>,
-    level: u8,
+    level: usize,
 }
 
 impl Env {
@@ -24,7 +24,7 @@ impl Env {
         Self::new_with_builtin(Self::builtin_env())
     }
 
-    pub fn level(&self) -> u8 {
+    pub fn level(&self) -> usize {
         self.level
     }
 
@@ -99,6 +99,16 @@ impl Env {
         v
     }
 
+    pub fn define_at(&self, level: usize, k: &str, v: Exp) -> Exp {
+        if level == self.level {
+            self.define(k, v)
+        } else if let Some(parent) = self.parent.as_ref() {
+            parent.define_at(level, k, v)
+        } else {
+            Exp::Nil
+        }
+    }
+
     pub fn assign(&self, k: &str, v: Exp) -> Exp {
         if self.level == 1 {
             return self.define(k, v);
@@ -139,7 +149,7 @@ impl Env {
         }
     }
 
-    pub fn find_env_by_level(&self, level: u8) -> Option<SharedEnv> {
+    pub fn find_env_by_level(&self, level: usize) -> Option<SharedEnv> {
         match &self.parent {
             None => None,
             Some(parent) => {
