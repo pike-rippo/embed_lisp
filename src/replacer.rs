@@ -14,7 +14,7 @@ impl Replacer {
 
     pub fn insert_whitespaces_outside_double_quote(
         mut self,
-        args: &[(&str, Option<char>, Option<char>)],
+        args: &[(&str, Option<&[char]>, Option<&[char]>)],
     ) -> Self {
         for (target, negative_lookbehind, negative_lookahead) in args {
             self = self.insert_whitespace_outside_double_quote(
@@ -29,8 +29,8 @@ impl Replacer {
     pub fn insert_whitespace_outside_double_quote(
         self,
         target: &str,
-        negative_lookbehind: Option<char>,
-        negative_lookahead: Option<char>,
+        negative_lookbehind: Option<&[char]>,
+        negative_lookahead: Option<&[char]>,
     ) -> Self {
         self.replace_outside_double_quote(
             target,
@@ -44,8 +44,8 @@ impl Replacer {
         mut self,
         from: &str,
         to: &str,
-        negative_lookbehind: Option<char>,
-        negative_lookahead: Option<char>,
+        negative_lookbehind: Option<&[char]>,
+        negative_lookahead: Option<&[char]>,
     ) -> Self {
         let mut result = String::with_capacity(self.value.len());
         let mut inside = false;
@@ -64,11 +64,8 @@ impl Replacer {
                 matched = false;
                 if !from.is_empty()
                     && c == from.chars().next().unwrap_or('\0')
-                    && (negative_lookbehind.is_none() || last != negative_lookbehind)
-                    && (negative_lookahead.is_none()
-                        || chars
-                            .peek()
-                            .is_none_or(|next| Some(*next) != negative_lookahead))
+                    && !matches_negative(last, negative_lookbehind)
+                    && !matches_negative(chars.peek().copied(), negative_lookahead)
                 {
                     let lookahead_str: String =
                         chars.clone().take(from.len() - 1).collect::<String>();
@@ -97,6 +94,14 @@ impl Replacer {
 
         self.value = result;
         self
+    }
+}
+
+fn matches_negative(target: Option<char>, negatives: Option<&[char]>) -> bool {
+    if let (Some(c), Some(ngs)) = (target, negatives) {
+        ngs.contains(&c)
+    } else {
+        false
     }
 }
 
