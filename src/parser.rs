@@ -18,12 +18,15 @@ impl Parser {
             .insert_whitespaces_outside_double_quote(&[
                 ("(", None, None),
                 (")", None, None),
-                // ("'", Some('#'), None),
                 ("'", None, None),
                 ("`", None, None),
-                (",", None, Some('@')),
+                (",", None, Some(&['@'])),
                 (",@", None, None),
-                (".", Some('.'), Some('.')),
+                (
+                    ".",
+                    Some(&['1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '.']),
+                    Some(&['1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '.']),
+                ),
                 ("...", None, None),
                 ("::", None, None),
                 (";#", None, None),
