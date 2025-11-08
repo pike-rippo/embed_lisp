@@ -1,5 +1,10 @@
 use crate::{
-    environment::SharedEnv, error::SyntaxError, evaluator::Evaluator, exp::Exp, flow::EvalResult,
+    environment::SharedEnv,
+    error::SyntaxError,
+    evaluator::Evaluator,
+    exp::Exp,
+    flow::EvalResult,
+    visit::{DumpVisitor, FullDumpVisitor, Visitable, Visitor},
 };
 
 pub fn register(env: &SharedEnv) {
@@ -36,7 +41,18 @@ fn expand_macro_impl(args: &[Exp], env: &SharedEnv, eval: &Evaluator) -> EvalRes
 }
 
 fn dump_env_impl(args: &[Exp], env: &SharedEnv, _: &Evaluator) -> EvalResult {
-    env.dump(args.first().is_some_and(|e| e.is_truthy()));
+    let is_full = args.first().is_some_and(|e| e.is_truthy());
+
+    if is_full {
+        let mut visitor = FullDumpVisitor::new();
+        env.accept(&mut visitor);
+        print!("{}", visitor.result());
+    } else {
+        let mut visitor = DumpVisitor::new();
+        env.accept(&mut visitor);
+        print!("{}", visitor.result());
+    }
+
     Ok(Exp::Bool(true).value_flow())
 }
 

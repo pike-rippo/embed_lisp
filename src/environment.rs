@@ -7,6 +7,7 @@ use crate::{
     error::{Result, SyntaxError},
     exp::Exp,
     typedef::Shared,
+    visit::{HashMapIter, Visitable, Visitor},
 };
 
 pub type SharedEnv = Shared<Env>;
@@ -21,6 +22,10 @@ pub struct Env {
 impl Env {
     pub fn new() -> SharedEnv {
         Self::new_with_builtin(Self::builtin_env())
+    }
+
+    pub fn level(&self) -> u8 {
+        self.level
     }
 
     pub fn new_with_builtin(builtin: SharedEnv) -> SharedEnv {
@@ -194,6 +199,29 @@ impl Env {
         if let Some(parent) = &self.parent {
             parent.dump(show_builtin);
         }
+    }
+
+    pub fn current_iter(&self) -> HashMapIter<'_> {
+        let guard = self.current.read();
+        let iter = unsafe {
+            std::mem::transmute::<_, std::collections::hash_map::Iter<'_, String, Exp>>(
+                guard.iter(),
+            )
+        };
+        HashMapIter::new(guard, iter)
+    }
+
+    pub fn parent_accept(&self, visitor: &mut dyn Visitor) {
+        self.parent.as_ref().and_then(|parent| {
+            parent.accept(visitor);
+            Some(())
+        });
+    }
+}
+
+impl Visitable for Env {
+    fn accept(&self, visitor: &mut dyn Visitor) {
+        visitor.visit_env(self);
     }
 }
 

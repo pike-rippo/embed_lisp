@@ -14,10 +14,37 @@ pub struct TaskExp {
 }
 
 #[cfg(feature = "async")]
+impl PartialEq for TaskExp {
+    fn eq(&self, other: &Self) -> bool {
+        std::ptr::eq(&*self.handle, &*other.handle)
+    }
+}
+
+#[cfg(feature = "async")]
 impl TaskExp {
     pub fn new(handle: JoinHandle<EvalResult>) -> Self {
         Self {
             handle: Shared::new(Mutex::new(Some(handle))),
+        }
+    }
+
+    pub fn status(&self) -> &'static str {
+        if tokio::runtime::Handle::try_current().is_ok() {
+            tokio::task::block_in_place(|| {
+                let Some(handle) = self.handle.blocking_lock().take() else {
+                    return "Consumed";
+                };
+                let r = handle.is_finished();
+                self.handle.blocking_lock().replace(handle);
+                if r { "Ready" } else { "Pending" }
+            })
+        } else {
+            let Some(handle) = self.handle.blocking_lock().take() else {
+                return "Consumed";
+            };
+            let r = handle.is_finished();
+            self.handle.blocking_lock().replace(handle);
+            if r { "Ready" } else { "Pending" }
         }
     }
 

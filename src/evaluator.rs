@@ -151,19 +151,16 @@ impl Evaluator {
     fn apply_lambda(&self, lambda: LambdaExp, args: &[Exp], env: &SharedEnv) -> EvalResult {
         let values = self.eval_form(args, env)?;
         let child = self.env_extend(&lambda.params_exp, &values, env)?;
-        // self.eval(&lambda.body_exp, &child)
         begin_impl(&lambda.body_exp, &child, self)
     }
 
     fn apply_macro(&self, lambda: LambdaExp, args: &[Exp], env: &SharedEnv) -> EvalResult {
         let expanded = self.expand_macro(lambda, args, env)?;
         self.eval(&expanded.try_unwrap()?, env)
-        // begin_impl(&expanded.try_unwrap()?, env, self)
     }
 
     pub fn expand_macro(&self, lambda: LambdaExp, args: &[Exp], env: &SharedEnv) -> EvalResult {
         let child = self.env_extend(&lambda.params_exp, args, env)?;
-        // self.eval(&lambda.body_exp, &child)
         begin_impl(&lambda.body_exp, &child, self)
     }
 

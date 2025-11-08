@@ -1,6 +1,7 @@
 use std::{
     fmt::Display,
     hash::{Hash, Hasher},
+    ptr,
 };
 
 #[cfg(feature = "async")]
@@ -56,8 +57,19 @@ impl PartialEq for Exp {
             (Number(a), Number(b)) => a == b,
             (Bool(a), Bool(b)) => a == b,
             (String(a), String(b)) => a == b,
-            (Symbol(a), Symbol(b)) => a == b,
             (List(a), List(b)) => a == b,
+            (DottedList(a1, a2), DottedList(b1, b2)) => a1 == b1 && a2 == b2,
+            (Symbol(a), Symbol(b)) => a == b,
+            (Primitive(a), Primitive(b)) => std::ptr::fn_addr_eq(*a, *b),
+            (Lambda(a), Lambda(b)) => a == b,
+            (Macro(a), Macro(b)) => a == b,
+            (Native(a), Native(b)) => ptr::eq(&**a, &**b),
+            (Namespace(a), Namespace(b)) => ptr::eq(&**a, &**b),
+            #[cfg(feature = "async")]
+            (Future(a), Future(b)) => a == b,
+            #[cfg(feature = "async")]
+            (Task(a), Task(b)) => a == b,
+
             _ => false,
         }
     }
@@ -82,10 +94,6 @@ impl Hash for Exp {
 
 impl std::fmt::Debug for Exp {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        // match self {
-        //     Exp::Native(obj) => write!(f, "<native:{}>", obj),
-        //     other => write!(f, "{}", other),
-        // }
         match self {
             Self::Nil => write!(f, "Exp::Nil"),
             Self::Number(n) => write!(f, "Exp::Number({})", n),
@@ -102,21 +110,15 @@ impl std::fmt::Debug for Exp {
                 tail
             ),
             Self::Symbol(s) => write!(f, "Exp::Symbol({})", s),
-            Self::Primitive(_) => write!(f, "Exp::Primitive()"),
+            Self::Primitive(function) => write!(f, "Exp::Primitive({:?})", function),
             Self::Lambda(lambda) => write!(f, "Exp::Lambda({:?})", lambda),
             Self::Macro(lambda) => write!(f, "Exp::Macro({:?})", lambda),
             Self::Native(native) => write!(f, "Exp::Native({})", native),
             Self::Namespace(_) => write!(f, "Exp::Namespace()"),
             #[cfg(feature = "async")]
-            Self::Future(_) => write!(f, "Exp::Future()"),
+            Self::Future(future) => write!(f, "Exp::Future{{ {:?} }}", future),
             #[cfg(feature = "async")]
-            Self::Task(task) => {
-                if task.is_ready() {
-                    write!(f, "Task {{ Ready }}")
-                } else {
-                    write!(f, "Task {{ Pending }}")
-                }
-            }
+            Self::Task(task) => write!(f, "Task {{ {} }}", task.status()),
         }
     }
 }
@@ -158,7 +160,8 @@ impl std::fmt::Display for Exp {
                 tail
             ),
             Self::Symbol(s) => s.clone(),
-            Self::Primitive(_) => "Primitive".to_string(),
+            // Self::Primitive(_) => "Primitive".to_string(),
+            Self::Primitive(_) => format!("Primitive"),
             Self::Lambda(lambda) => {
                 format!(
                     "Lambda {{ {} -> {} }}",
@@ -186,14 +189,9 @@ impl std::fmt::Display for Exp {
             Self::Native(native) => format!("Native {{ {} }}", native),
             Self::Namespace(_) => "Namespace".to_string(),
             #[cfg(feature = "async")]
-            Self::Future(_) => "Future {}".to_string(),
+            Self::Future(future) => format!("Future {{ {} }}", future),
             #[cfg(feature = "async")]
-            Self::Task(future) => if future.is_ready() {
-                "Task { Ready }"
-            } else {
-                "Task { Pending }"
-            }
-            .to_string(),
+            Self::Task(task) => format!("Task {{ {} }}", task.status()),
         };
         write!(f, "{}", str)
     }
@@ -222,6 +220,10 @@ impl Exp {
 
     pub fn is_dotted_list(&self) -> bool {
         matches!(self, Self::DottedList(_, _))
+    }
+
+    pub fn is_namespace(&self) -> bool {
+        matches!(self, Self::Namespace(_))
     }
 
     pub fn is_quote(&self) -> bool {

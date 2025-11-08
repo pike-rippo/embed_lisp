@@ -1,3 +1,5 @@
+use std::fmt::{Debug, Display};
+
 #[cfg(feature = "async")]
 use tokio::task::JoinHandle;
 
@@ -11,6 +13,24 @@ pub struct FutureExp {
     exp: Box<Exp>,
     env: SharedEnv,
     eval: Evaluator,
+}
+
+impl Debug for FutureExp {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{:?}", self.exp)
+    }
+}
+
+impl Display for FutureExp {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.exp)
+    }
+}
+
+impl PartialEq for FutureExp {
+    fn eq(&self, other: &Self) -> bool {
+        std::ptr::eq(&*self.env, &*other.env)
+    }
 }
 
 #[cfg(feature = "async")]

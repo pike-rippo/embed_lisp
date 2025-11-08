@@ -18,6 +18,7 @@ mod parser;
 mod replacer;
 mod special_forms;
 mod typedef;
+mod visit;
 
 #[cfg(feature = "async")]
 pub static GLOBAL_RUNTIME: LazyLock<Runtime> =

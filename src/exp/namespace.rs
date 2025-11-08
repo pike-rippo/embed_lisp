@@ -6,6 +6,7 @@ use crate::{
     Exp,
     environment::SharedEnv,
     error::{Result, SyntaxError},
+    visit::HashMapIter,
 };
 
 pub struct NameSpace {
@@ -46,5 +47,15 @@ impl NameSpace {
         for (k, v) in self.inner.read().iter() {
             env.define(k, v.clone());
         }
+    }
+
+    pub fn current_iter(&self) -> HashMapIter<'_> {
+        let guard = self.inner.read();
+        let iter = unsafe {
+            std::mem::transmute::<_, std::collections::hash_map::Iter<'_, String, Exp>>(
+                guard.iter(),
+            )
+        };
+        HashMapIter::new(guard, iter)
     }
 }
