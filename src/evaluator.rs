@@ -179,7 +179,11 @@ impl Evaluator {
         env: &SharedEnv,
     ) -> EvalResult {
         let mut new_args: Vec<Exp> = Vec::with_capacity(args.len() + 1);
-        new_args.push((*init).clone());
+        // new_args.push((*init).clone());
+        match (*init).clone() {
+            Exp::List(list) => new_args.extend_from_slice(&list),
+            otherwise => new_args.push(otherwise),
+        }
         new_args.extend_from_slice(args);
         self.apply_lambda(lambda, &new_args, env)
     }

@@ -109,6 +109,26 @@ impl Env {
         }
     }
 
+    pub fn define_at_parent(&self, level: usize, k: &str, v: Exp) -> Exp {
+        // if level == self.level {
+        //     self.define(k, v)
+        // } else if let Some(parent) = self.parent.as_ref() {
+        //     parent.define_at(level, k, v)
+        // } else {
+        //     Exp::Nil
+        // }
+
+        if self.level == 2 {
+            self.define(k, v)
+        } else if level == 0 {
+            self.define(k, v)
+        } else if let Some(parent) = self.parent.as_ref() {
+            parent.define_at_parent(level - 1, k, v)
+        } else {
+            Exp::Nil
+        }
+    }
+
     pub fn assign(&self, k: &str, v: Exp) -> Exp {
         if self.level == 1 {
             return self.define(k, v);

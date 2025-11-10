@@ -53,13 +53,14 @@ impl Default for Interpreter {
 impl Interpreter {
     pub fn new() -> Self {
         let builtin_env = Env::builtin_env();
-        let global_env = Env::new_with_builtin(builtin_env.clone());
-        namespace::register_all(&global_env);
+        let system_env = Env::new_with_builtin(builtin_env.clone());
+        namespace::register_all(&system_env);
+        let system_env = Env::new_with_builtin(system_env);
 
         Self {
             parser: Parser::new(),
             eval: Evaluator::new(),
-            env: Env::new_child_with_binding(global_env, &[], &[]),
+            env: Env::new_child_with_binding(system_env, &[], &[]),
             builtin_env,
         }
     }

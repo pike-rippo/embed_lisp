@@ -50,8 +50,9 @@ impl Visitor for FullDumpVisitor {
         let indent = self.indent.repeat(self.depth);
         let _ = match env.level() {
             0 => writeln!(self.buf, "{}Builtin", indent),
-            1 => writeln!(self.buf, "{}Global", indent),
-            level => writeln!(self.buf, "{}Level: {}", indent, level - 1),
+            1 => writeln!(self.buf, "{}System", indent),
+            2 => writeln!(self.buf, "{}Global", indent),
+            level => writeln!(self.buf, "{}Level: {}", indent, level - 2),
         };
 
         self.depth += 1;

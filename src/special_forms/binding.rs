@@ -11,6 +11,7 @@ use crate::{
 pub fn register(eval: &Evaluator) {
     eval.register_special_form("define", define_impl);
     eval.register_special_form("define-at", define_at_impl);
+    eval.register_special_form("define-parent", define_parent_impl);
     eval.register_special_form("assign", assign_impl);
     eval.register_special_form("drop", drop_impl);
     eval.register_special_form("let", |args, env, eval| let_impl(args, env, eval, false));
@@ -35,20 +36,57 @@ fn define_at_impl(args: &[Exp], env: &SharedEnv, eval: &Evaluator) -> EvalResult
         return Err(SyntaxError::invalid_args_size("define-at", 2, args.len()));
     }
 
-    let Some(Exp::Number(l)) = args.first() else {
-        return Err(SyntaxError::invalid_args_type_nth("define-at", "number", 1));
+    let level = match &args[0] {
+        Exp::Symbol(s) if s.eq_ignore_ascii_case("builtin") => 0,
+        Exp::Symbol(s) if s.eq_ignore_ascii_case("system") => 1,
+        Exp::Symbol(s) if s.eq_ignore_ascii_case("global") => 2,
+        Exp::Number(n) if *n >= 0.0 => *n as usize + 2,
+        _ => {
+            return Err(SyntaxError::invalid_args_type_nth(
+                "define-at",
+                "positive number",
+                1,
+            ));
+        }
     };
 
-    // let level = match &args[0] {
-    //     Exp::Number(n) =>
-    // }
-
-    let Some(Exp::Symbol(k)) = args.get(1) else {
+    let Exp::Symbol(k) = &args[1] else {
         return Err(SyntaxError::invalid_args_type_nth("define-at", "symbol", 2));
     };
 
     let v = eval.eval(&args[2], env)?;
-    Ok(env.define_at(*l as usize, k, v.try_unwrap()?).value_flow())
+    Ok(env.define_at(level, k, v.try_unwrap()?).value_flow())
+}
+
+fn define_parent_impl(args: &[Exp], env: &SharedEnv, eval: &Evaluator) -> EvalResult {
+    if args.len() != 3 {
+        return Err(SyntaxError::invalid_args_size("define-at", 2, args.len()));
+    }
+
+    let Exp::Number(level) = &args[0] else {
+        return Err(SyntaxError::invalid_args_type_nth(
+            "define-at",
+            "positive number",
+            1,
+        ));
+    };
+
+    let level = if *level >= 0.0 {
+        *level as usize
+    } else {
+        return Err(SyntaxError::invalid_args_type_nth(
+            "define-at",
+            "positive number",
+            1,
+        ));
+    };
+
+    let Exp::Symbol(k) = &args[1] else {
+        return Err(SyntaxError::invalid_args_type_nth("define-at", "symbol", 2));
+    };
+
+    let v = eval.eval(&args[2], env)?;
+    Ok(env.define_at_parent(level, k, v.try_unwrap()?).value_flow())
 }
 
 fn assign_impl(args: &[Exp], env: &SharedEnv, eval: &Evaluator) -> EvalResult {

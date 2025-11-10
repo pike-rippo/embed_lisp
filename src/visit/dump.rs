@@ -49,9 +49,9 @@ impl Visitor for DumpVisitor {
     fn visit_env(&mut self, env: &Env) {
         let indent = self.indent.repeat(self.depth);
         let _ = match env.level() {
-            0 => return,
-            1 => writeln!(self.buf, "{}Global", indent),
-            level => writeln!(self.buf, "{}Level: {}", indent, level - 1),
+            0 | 1 => return,
+            2 => writeln!(self.buf, "{}Global", indent),
+            level => writeln!(self.buf, "{}Level: {}", indent, level - 2),
         };
 
         self.depth += 1;
