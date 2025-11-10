@@ -30,6 +30,7 @@ impl Parser {
                 ("...", None, None),
                 ("::", None, None),
                 (";#", None, None),
+                ("->", None, None),
             ])
             .value();
 
@@ -135,6 +136,15 @@ fn read_seq(input: &[String]) -> Result<(Exp, &[String])> {
                 Exp::String(k.to_string()),
             ]));
             xs = &rest[1..];
+            continue;
+        }
+
+        if next == "->" {
+            let args = res.clone();
+            res.clear();
+            res.push(Exp::Symbol("lambda".to_string()));
+            res.push(Exp::List(args));
+            xs = &rest;
             continue;
         }
 
