@@ -26,7 +26,7 @@ pub static GLOBAL_RUNTIME: LazyLock<Runtime> =
 
 pub static GENESYM_COUNTER: AtomicUsize = AtomicUsize::new(0);
 
-pub use error::Error;
+pub use error::{Error, SyntaxError};
 pub use evaluator::{Evaluator, SpecialFormFn};
 pub use exp::{Callable, Exp, PrimitiveFunction};
 pub use native_registry::NativeCreator;
