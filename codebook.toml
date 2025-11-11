@@ -1,1 +1,4 @@
-words = ["funcall"]
+words = [
+    "funcall",
+    "mapcar",
+]

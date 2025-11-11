@@ -2,7 +2,7 @@ use std::vec;
 
 use crate::{
     environment::SharedEnv,
-    error::{Error, SyntaxError},
+    error::{Error, Result, SyntaxError},
     evaluator::Evaluator,
     exp::Exp,
     flow::EvalResult,
@@ -20,6 +20,7 @@ pub fn register(env: &SharedEnv) {
     env.define("length", Exp::Primitive(length_impl));
     env.define("funcall", Exp::Primitive(funcall_impl));
     env.define("apply", Exp::Primitive(apply_impl));
+    env.define("mapcar", Exp::Primitive(mapcar_impl));
 }
 
 fn car_impl(args: &[Exp], _: &SharedEnv, _: &Evaluator) -> EvalResult {
@@ -141,4 +142,32 @@ fn apply_impl(args: &[Exp], env: &SharedEnv, eval: &Evaluator) -> EvalResult {
         arg_forms.extend_from_slice(list_arg);
         eval.apply(f.clone(), &arg_forms, env)
     }
+}
+
+fn mapcar_impl(args: &[Exp], env: &SharedEnv, eval: &Evaluator) -> EvalResult {
+    if args.len() < 2 {
+        return Err(SyntaxError::not_enough_args("mapcar", 2, args.len()));
+    }
+    let f = &args[0];
+    let lists: Vec<&Vec<Exp>> = args[1..]
+        .iter()
+        .map(|args| match args {
+            Exp::List(v) => Ok(v),
+            _ => Err(SyntaxError::invalid_args_type("mapcar", "list")),
+        })
+        .collect::<Result<Vec<&Vec<Exp>>>>()?;
+
+    let min_len = lists.iter().map(|l| l.len()).min().unwrap_or(0);
+    let mut results = Vec::with_capacity(min_len);
+
+    for i in 0..min_len {
+        let mut params = Vec::with_capacity(lists.len());
+        for lst in &lists {
+            params.push(lst[i].clone());
+        }
+        let result = eval.apply(f.clone(), &params, env)?;
+        results.push(result.try_unwrap()?);
+    }
+
+    Ok(Exp::List(results).value_flow())
 }
