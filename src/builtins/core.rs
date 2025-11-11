@@ -1,5 +1,3 @@
-use std::time::Duration;
-
 use crate::{
     Error,
     environment::SharedEnv,
@@ -10,7 +8,6 @@ use crate::{
     parser::Parser,
 };
 
-/// 'call', 'range', 'type-of', 'parse', 'eval'
 pub fn register(env: &SharedEnv) {
     env.define("create-native", Exp::Primitive(create_native_impl));
     env.define("call", Exp::Primitive(call_impl));
@@ -30,13 +27,11 @@ pub fn register(env: &SharedEnv) {
 }
 
 fn create_native_impl(args: &[Exp], _: &SharedEnv, eval: &Evaluator) -> EvalResult {
-    let (name, args) = args
-        .split_first()
-        // .ok_or("create-native expected at least one argument")?;
-        .ok_or(SyntaxError::not_enough_args("create-native", 2, args.len()))?;
+    let (name, args) =
+        args.split_first()
+            .ok_or(SyntaxError::not_enough_args("create-native", 2, args.len()))?;
 
     let Exp::String(name) = name else {
-        // return Err("create-native expected a string as the first argument".into());
         return Err(SyntaxError::invalid_args_type_nth(
             "create-native",
             "string",
@@ -105,7 +100,6 @@ fn eval_impl(args: &[Exp], env: &SharedEnv, eval: &Evaluator) -> EvalResult {
         return Err(SyntaxError::invalid_args_size("eval", 1, args.len()));
     }
 
-    // eval.eval(&args[0], env)
     match &args[0] {
         Exp::List(exps) => {
             let mut result = Exp::Nil.value_flow();
@@ -120,7 +114,6 @@ fn eval_impl(args: &[Exp], env: &SharedEnv, eval: &Evaluator) -> EvalResult {
 
 fn break_impl(args: &[Exp], _: &SharedEnv, _: &Evaluator) -> EvalResult {
     if !args.is_empty() {
-        // err!("'break' expected no arguments");
         return Err(SyntaxError::invalid_args_size("break", 0, args.len()));
     }
     Ok(EvalFlow::Break)
@@ -154,9 +147,9 @@ fn raise_impl(args: &[Exp], _: &SharedEnv, _: &Evaluator) -> EvalResult {
 
 #[cfg(feature = "async")]
 fn sleep_impl(_: &[Exp], _: &SharedEnv, _: &Evaluator) -> EvalResult {
-    #[cfg(feature = "async")]
     use crate::GLOBAL_RUNTIME;
     use crate::exp::TaskExp;
+    use std::time::Duration;
 
     let handle = GLOBAL_RUNTIME.spawn(async move {
         tokio::time::sleep(Duration::from_secs(10)).await;

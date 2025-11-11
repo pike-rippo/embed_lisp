@@ -4,7 +4,6 @@ use parking_lot::RwLock;
 
 use crate::{Exp, error::SyntaxError, flow::EvalResult, typedef::Shared};
 
-// pub type NativeCreator = Box<dyn Fn(&[Exp]) -> EvalResult + Send + Sync + 'static>;
 pub type NativeCreator = fn(&[Exp]) -> EvalResult;
 
 #[derive(Clone)]

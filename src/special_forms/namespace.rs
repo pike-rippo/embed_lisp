@@ -15,7 +15,6 @@ fn namespace_impl(args: &[Exp], env: &SharedEnv, eval: &Evaluator) -> EvalResult
     }
 
     for arg in args {
-        // ns_define_impl(&[ns.clone()].concat(arg), env, eval)?;
         if let Exp::List(list) = arg {
             let mut params = Vec::with_capacity(list.len() + 1);
             params.push(ns.clone());

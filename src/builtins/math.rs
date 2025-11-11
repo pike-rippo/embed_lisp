@@ -6,7 +6,6 @@ use crate::{
     flow::EvalResult,
 };
 
-/// '+', '+', '-', '/'
 pub fn register(env: &SharedEnv) {
     env.define("+", Exp::Primitive(add_impl));
     env.define("*", Exp::Primitive(mul_impl));

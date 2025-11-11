@@ -5,11 +5,9 @@ use std::{
 };
 
 #[cfg(feature = "async")]
+use crate::exp::{FutureExp, TaskExp};
 use crate::{
     Error,
-    exp::{FutureExp, TaskExp},
-};
-use crate::{
     environment::SharedEnv,
     error::Result,
     evaluator::Evaluator,
@@ -164,7 +162,6 @@ impl std::fmt::Display for Exp {
                 tail
             ),
             Self::Symbol(s) => s.clone(),
-            // Self::Primitive(_) => "Primitive".to_string(),
             Self::Primitive(_) => format!("Primitive"),
             Self::Lambda(lambda) => {
                 format!(
@@ -249,11 +246,6 @@ impl Exp {
 
     pub fn is_quoted(&self) -> bool {
         match self {
-            // Exp::List(list) => match (list.first(), list.get(1)) {
-            //     (Some(Exp::Symbol(s)), _) if list.len() == 2 && s == "quote" => true,
-            //     _ => false,
-            // },
-            // _ => false,
             Exp::List(list) => {
                 matches!(
                     (list.first(), list.get(1)), (Some(Exp::Symbol(s)), _) if list.len() == 2 && s == "quote")

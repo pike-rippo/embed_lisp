@@ -7,7 +7,7 @@ use crate::{
     flow::{EvalFlow, EvalResult},
     typedef::Shared,
 };
-/// 'lambda', 'begin', 'quote', 'for'
+
 pub fn register(eval: &Evaluator) {
     eval.register_special_form("lambda", lambda_impl);
     eval.register_special_form("recur-lambda", recur_lambda_impl);

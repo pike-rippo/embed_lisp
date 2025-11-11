@@ -4,12 +4,11 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-colorize = { path = "C:/Users/rippo/pro/rs/colorize" }
+colorize = { git = "https://github.com/pike-rippo/colorize.git" }
 parking_lot = "0.12.5"
 thiserror = "2.0.17"
-tokio = { version = "1.48.0", features = ["full"] }
+tokio = { version = "1.48.0", features = ["full"], optional = true }
 
 [features]
-# default = []
-default = ["async"]
-async = []
+default = []
+async = ["tokio"]

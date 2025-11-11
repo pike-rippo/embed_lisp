@@ -114,11 +114,7 @@ mod test {
         let s = "(+ 1 1)";
         let r = Replacer::new(s.to_string());
         let formatted = r
-            .insert_whitespaces_outside_double_quote(&[
-                //
-                ("(", None, None),
-                (")", None, None),
-            ])
+            .insert_whitespaces_outside_double_quote(&[("(", None, None), (")", None, None)])
             .value();
 
         assert_eq!(formatted, s.replace("(", " ( ").replace(")", " ) "))

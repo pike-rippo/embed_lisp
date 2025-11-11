@@ -116,7 +116,6 @@ fn read_seq(input: &[String]) -> Result<(Exp, &[String])> {
             };
         }
 
-        // obj.methodで、methodにリストは付け付けない
         if next == "." {
             res.insert(res.len() - 1, Exp::Symbol("call".to_string()));
             let method = rest.first().ok_or(ParseError::unexpected_token("."))?;
@@ -180,7 +179,6 @@ fn split_whitespace_outside_quote(s: &str) -> Vec<String> {
     let mut chars = s.chars().peekable();
     let mut pre_char_was_backslash = false;
 
-    // for c in chars {
     while let Some(c) = chars.next() {
         if c == ';' && chars.peek() == Some(&'*') && !inside {
             chars.next();

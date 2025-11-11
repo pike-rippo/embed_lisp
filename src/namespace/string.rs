@@ -38,7 +38,7 @@ fn extract_string<'a>(func_name: &'static str, e: &'a Exp) -> Result<&'a String>
     }
 }
 
-fn symbol_impl(args: &[Exp], env: &SharedEnv, eval: &Evaluator) -> EvalResult {
+fn symbol_impl(args: &[Exp], _env: &SharedEnv, _eval: &Evaluator) -> EvalResult {
     if args.len() != 1 {
         return Err(SyntaxError::invalid_args_size("symbol", 1, args.len()));
     }
@@ -59,7 +59,6 @@ fn string_impl(args: &[Exp], env: &SharedEnv, eval: &Evaluator) -> EvalResult {
 }
 
 fn concat_impl(args: &[Exp], _: &SharedEnv, _: &Evaluator) -> EvalResult {
-    // let mut iter = args.iter().map(|e| extract_string("concat", e));
     let size = args
         .iter()
         .map(|e| extract_string("concat", e))
@@ -324,28 +323,3 @@ fn repeat_impl(args: &[Exp], _: &SharedEnv, _: &Evaluator) -> EvalResult {
 
     Ok(Exp::String(s.repeat(*n as usize)).value_flow())
 }
-// fn pad_left_impl(args: &[Exp], _: &SharedEnv, _: &Evaluator) -> EvalResult {
-//     panic!()
-// }
-// fn pad_right_impl(args: &[Exp], _: &SharedEnv, _: &Evaluator) -> EvalResult {
-//     panic!()
-// }
-// fn format_impl(args: &[Exp], _: &SharedEnv, _: &Evaluator) -> EvalResult {
-//     if args.is_empty() {
-//         return Err(SyntaxError::invalid_args_size("format", 1, args.len()));
-//     }
-
-//     let Exp::String(format) = &args[0] else {
-//         return Err(SyntaxError::invalid_args_type_nth("format", "string", 1));
-//     };
-
-//     let args = format_args!(format, )
-
-//     Ok(Exp::String(format).value_flow())
-// }
-// fn escape_impl(args: &[Exp], _: &SharedEnv, _: &Evaluator) -> EvalResult {
-//     panic!()
-// }
-// fn unescape_impl(args: &[Exp], _: &SharedEnv, _: &Evaluator) -> EvalResult {
-//     panic!()
-// }

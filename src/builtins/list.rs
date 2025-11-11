@@ -8,9 +8,6 @@ use crate::{
     flow::EvalResult,
 };
 
-// Exp::Primitive(|args: &[Exp], _: &SharedEnv, _: &Evaluator| -> EvalResult {})
-
-/// 'car', 'cdr', 'cons', 'list', 'append', 'length', 'apply'
 pub fn register(env: &SharedEnv) {
     env.define("car", Exp::Primitive(car_impl));
     env.define("cdr", Exp::Primitive(cdr_impl));
@@ -104,7 +101,6 @@ fn length_impl(args: &[Exp], _: &SharedEnv, _: &Evaluator) -> EvalResult {
     match &args[0] {
         Exp::List(l) => Ok(Exp::Number(l.len() as f64).value_flow()),
         Exp::String(s) => Ok(Exp::Number(s.len() as f64).value_flow()),
-        // _ => err!("length expects a list or string"),
         _ => {
             return Err(SyntaxError::invalid_args_type("length", "list or string"));
         }

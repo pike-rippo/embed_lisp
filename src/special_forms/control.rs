@@ -7,7 +7,6 @@ use crate::{
     special_forms::core::begin_impl,
 };
 
-/// 'if', 'cond', 'and', 'or'
 pub fn register(eval: &Evaluator) {
     eval.register_special_form("if", if_impl);
     eval.register_special_form("cond", cond_impl);

@@ -179,7 +179,6 @@ impl Evaluator {
         env: &SharedEnv,
     ) -> EvalResult {
         let mut new_args: Vec<Exp> = Vec::with_capacity(args.len() + 1);
-        // new_args.push((*init).clone());
         match (*init).clone() {
             Exp::List(list) => new_args.extend_from_slice(&list),
             otherwise => new_args.push(otherwise),
@@ -223,47 +222,40 @@ impl Evaluator {
 
     pub fn eval_quasiquote(&self, exp: &Exp, env: &SharedEnv) -> Result<(Exp, bool)> {
         match exp {
-            Exp::List(list) if !list.is_empty() => {
-                match &list[0] {
-                    Exp::Symbol(s) if s == "quasiquote" => {
-                        if list.len() != 2 {
-                            return Err(SyntaxError::invalid_args_size(
-                                "quasiquote",
-                                1,
-                                list.len(),
-                            ));
-                        }
-                        self.eval_quasiquote(&list[1], env)
+            Exp::List(list) if !list.is_empty() => match &list[0] {
+                Exp::Symbol(s) if s == "quasiquote" => {
+                    if list.len() != 2 {
+                        return Err(SyntaxError::invalid_args_size("quasiquote", 1, list.len()));
                     }
-                    Exp::Symbol(s) if s == "unquote" => {
-                        Ok((self.eval(&list[1], env)?.try_unwrap()?, false))
-                    }
-                    Exp::Symbol(s) if s == "unquote-splicing" => {
-                        let val = self.eval(&list[1], env)?;
-                        if let Exp::List(items) = val.try_unwrap()? {
-                            Ok((Exp::List(items), true))
-                        } else {
-                            return Err(SyntaxError::invalid_args_type("unquote-splicing", "list"));
-                        }
-                    }
-                    _ => {
-                        // 再帰展開
-                        let mut new_list = Vec::new();
-                        for item in list {
-                            let (exp, splicing) = self.eval_quasiquote(item, env)?;
-                            if splicing {
-                                let Exp::List(items) = exp else {
-                                    unreachable!();
-                                };
-                                new_list.extend(items);
-                            } else {
-                                new_list.push(exp);
-                            }
-                        }
-                        Ok((Exp::List(new_list), false))
+                    self.eval_quasiquote(&list[1], env)
+                }
+                Exp::Symbol(s) if s == "unquote" => {
+                    Ok((self.eval(&list[1], env)?.try_unwrap()?, false))
+                }
+                Exp::Symbol(s) if s == "unquote-splicing" => {
+                    let val = self.eval(&list[1], env)?;
+                    if let Exp::List(items) = val.try_unwrap()? {
+                        Ok((Exp::List(items), true))
+                    } else {
+                        return Err(SyntaxError::invalid_args_type("unquote-splicing", "list"));
                     }
                 }
-            }
+                _ => {
+                    let mut new_list = Vec::new();
+                    for item in list {
+                        let (exp, splicing) = self.eval_quasiquote(item, env)?;
+                        if splicing {
+                            let Exp::List(items) = exp else {
+                                unreachable!();
+                            };
+                            new_list.extend(items);
+                        } else {
+                            new_list.push(exp);
+                        }
+                    }
+                    Ok((Exp::List(new_list), false))
+                }
+            },
             _ => Ok((exp.clone(), false)),
         }
     }

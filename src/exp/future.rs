@@ -1,3 +1,4 @@
+#[cfg(feature = "async")]
 use std::fmt::{Debug, Display};
 
 #[cfg(feature = "async")]
@@ -15,18 +16,21 @@ pub struct FutureExp {
     eval: Evaluator,
 }
 
+#[cfg(feature = "async")]
 impl Debug for FutureExp {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{:?}", self.exp)
     }
 }
 
+#[cfg(feature = "async")]
 impl Display for FutureExp {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.exp)
     }
 }
 
+#[cfg(feature = "async")]
 impl PartialEq for FutureExp {
     fn eq(&self, other: &Self) -> bool {
         std::ptr::eq(&*self.env, &*other.env)
@@ -58,7 +62,6 @@ impl FutureExp {
         let copy_exp = self.exp.clone();
         let copy_env = self.env.deep_copy();
         let copy_eval = self.eval.deep_copy();
-        // GLOBAL_RUNTIME.spawn(async move { copy_eval.eval(copy_exp, &copy_env) })
         GLOBAL_RUNTIME.spawn(async move { copy_eval.eval(&copy_exp, &copy_env) })
     }
 }

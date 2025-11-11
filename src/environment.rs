@@ -110,14 +110,6 @@ impl Env {
     }
 
     pub fn define_at_parent(&self, level: usize, k: &str, v: Exp) -> Exp {
-        // if level == self.level {
-        //     self.define(k, v)
-        // } else if let Some(parent) = self.parent.as_ref() {
-        //     parent.define_at(level, k, v)
-        // } else {
-        //     Exp::Nil
-        // }
-
         if self.level == 2 {
             self.define(k, v)
         } else if level == 0 {
@@ -157,7 +149,6 @@ impl Env {
     }
 
     pub fn drop_symbol(&self, k: &str) -> Exp {
-        // self.current.write().remove(l).unwrap_or(Exp::Nil)
         if self.current.read().contains_key(k) {
             self.current.write().remove(k).unwrap_or(Exp::Nil)
         } else {

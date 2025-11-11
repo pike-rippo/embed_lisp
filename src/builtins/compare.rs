@@ -25,8 +25,7 @@ macro_rules! ensure_tonicity {
         }
     }};
 }
-//ok!(f(first, rest))
-/// '=', '>', '>=', '<', '<=', 'null?', 'eq?'
+
 pub fn register(env: &SharedEnv) {
     env.define("=", Exp::Primitive(ensure_tonicity!("=", |a, b| a == b)));
     env.define(">", Exp::Primitive(ensure_tonicity!(">", |a, b| a > b)));
@@ -39,21 +38,17 @@ pub fn register(env: &SharedEnv) {
 
 fn null_impl(args: &[Exp], _: &SharedEnv, _: &Evaluator) -> EvalResult {
     if args.len() != 1 {
-        // err!("null? takes exactly one argument")
         return Err(SyntaxError::invalid_args_size("null?", 0, args.len()));
     }
     let Exp::List(list) = &args[0] else {
         return Err(SyntaxError::invalid_args_type_nth("null?", "list", 1));
     };
-    // ok!(list.is_empty())
     Ok(EvalFlow::Value(Exp::Bool(list.is_empty())))
 }
 
 fn eq_impl(args: &[Exp], _: &SharedEnv, _: &Evaluator) -> EvalResult {
     if args.len() != 2 {
-        // err!("eq? takes exactly two arguments")
         return Err(SyntaxError::invalid_args_size("eq?", 2, args.len()));
     }
-    // ok!(args[0] == args[1])
     Ok(EvalFlow::Value(Exp::Bool(args[0] == args[1])))
 }
