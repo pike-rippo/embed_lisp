@@ -155,7 +155,11 @@ impl FileObject {
             FileInner::Stdin(stdin) => stdin.read_to_string(&mut buf),
             other => return Err(Error::Reason(format!("{} is not readable", other))),
         };
-        Ok(Exp::String(buf).value_flow())
+        if buf.is_empty() {
+            Ok(Exp::Nil.value_flow())
+        } else {
+            Ok(Exp::String(buf).value_flow())
+        }
     }
 
     fn handle_read_line(&self, _args: &[Exp]) -> EvalResult {
@@ -168,7 +172,11 @@ impl FileObject {
             FileInner::Stdin(stdin) => stdin.read_line(&mut buf),
             other => return Err(Error::Reason(format!("{} is cannot call read-line", other))),
         };
-        Ok(Exp::String(buf.trim_end().to_string()).value_flow())
+        if buf.is_empty() {
+            Ok(Exp::Nil.value_flow())
+        } else {
+            Ok(Exp::String(buf.trim_end().to_string()).value_flow())
+        }
     }
 
     fn handle_read_lines(&self, _args: &[Exp]) -> EvalResult {
