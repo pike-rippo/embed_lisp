@@ -131,7 +131,7 @@ impl std::fmt::Display for Exp {
             Self::Nil => "Nil".to_string(),
             Self::Number(n) => n.to_string(),
             Self::Bool(b) => b.to_string(),
-            Exp::String(s) => format!("\"{}\"", s),
+            Exp::String(s) => s.clone(),
             Self::List(list) => {
                 if let Some(Exp::Symbol(s)) = list.first() {
                     let xs: Vec<_> = list[1..].iter().map(|x| x.to_string()).collect();
@@ -229,7 +229,12 @@ impl Exp {
     }
 
     pub fn is_truthy(&self) -> bool {
-        !matches!(self, Exp::Bool(false) | Exp::Nil)
+        // !matches!(self, Exp::Bool(false) | Exp::Nil)
+        match self {
+            Exp::Bool(false) | Exp::Nil => false,
+            Exp::List(list) if list.is_empty() => false,
+            _ => true,
+        }
     }
 
     pub fn is_dotted_list(&self) -> bool {
