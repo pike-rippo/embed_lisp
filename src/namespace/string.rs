@@ -10,6 +10,7 @@ use crate::{
 pub fn register(env: &SharedEnv) {
     let ns = NameSpace::default();
 
+    ns.define("number", Exp::Primitive(number_impl));
     ns.define("symbol", Exp::Primitive(symbol_impl));
     ns.define("string", Exp::Primitive(string_impl));
     ns.define("concat", Exp::Primitive(concat_impl));
@@ -35,6 +36,20 @@ fn extract_string<'a>(func_name: &'static str, e: &'a Exp) -> Result<&'a String>
     match e {
         Exp::String(s) => Ok(s),
         _ => Err(SyntaxError::invalid_args_type(func_name, "string")),
+    }
+}
+
+fn number_impl(args: &[Exp], _env: &SharedEnv, _eval: &Evaluator) -> EvalResult {
+    if args.len() != 1 {
+        return Err(SyntaxError::invalid_args_size("number", 1, args.len()));
+    }
+    let Exp::String(s) = &args[0] else {
+        return Err(SyntaxError::invalid_args_type("number", "string"));
+    };
+    let potential_float: std::result::Result<f64, std::num::ParseFloatError> = s.parse();
+    match potential_float {
+        Ok(v) => Ok(Exp::Number(v).value_flow()),
+        Err(_) => Err(Error::Reason(format!("'{}' is not number", s))),
     }
 }
 
