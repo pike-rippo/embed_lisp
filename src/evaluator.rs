@@ -93,7 +93,7 @@ impl Evaluator {
 
     pub fn eval(&self, exp: &Exp, env: &SharedEnv) -> EvalResult {
         if self.trace.load(std::sync::atomic::Ordering::Relaxed) {
-            println!("trace eval: {:?}", exp);
+            println!("trace eval: {}", exp);
         }
 
         match exp {
@@ -103,11 +103,11 @@ impl Evaluator {
             | Exp::String(_)
             | Exp::Native(_)
             | Exp::Namespace(_) => Ok(EvalFlow::Value(exp.clone())),
-            Exp::Primitive(_) => Err(SyntaxError::unexpected_form("function")),
-            Exp::Lambda(_) => Err(SyntaxError::unexpected_form("lambda")),
-            Exp::RecurLambda(_, _) => Err(SyntaxError::unexpected_form("recur-lambda")),
-            Exp::Macro(_) => Err(SyntaxError::unexpected_form("macro")),
-            Exp::DottedList(_, _) => Err(SyntaxError::unexpected_form("dotted list")),
+            Exp::Primitive(_) => Err(SyntaxError::unexpected_form("Primitive")),
+            Exp::Lambda(_) => Err(SyntaxError::unexpected_form("Lambda")),
+            Exp::RecurLambda(_, _) => Err(SyntaxError::unexpected_form("Lambda")),
+            Exp::Macro(_) => Err(SyntaxError::unexpected_form("Macro")),
+            Exp::DottedList(_, _) => Err(SyntaxError::unexpected_form("DottedList")),
             Exp::Symbol(k) => Ok(env.try_lookup(k)?.value_flow()),
             Exp::List(list) => {
                 let Some(first_form) = list.first() else {
@@ -124,7 +124,7 @@ impl Evaluator {
                 self.apply(first_eval.try_unwrap()?, args, env)
             }
             #[cfg(feature = "async")]
-            Exp::Future(_) => Err(SyntaxError::unexpected_form("future")),
+            Exp::Future(_) => Err(SyntaxError::unexpected_form("Future")),
             #[cfg(feature = "async")]
             Exp::Task(future) => future.get(),
         }
@@ -136,7 +136,11 @@ impl Evaluator {
             Exp::Lambda(lambda) => self.apply_lambda(lambda, args, env),
             Exp::RecurLambda(init, lambda) => self.apply_recur_lambda(init, lambda, args, env),
             Exp::Macro(lambda) => self.apply_macro(lambda, args, env),
-            _ => Err(SyntaxError::unexpected_form("function, lambda or macro")),
+            _ => Err(SyntaxError::expected_but(
+                "Primitive, Lambda or Macro",
+                &format!("{}", exp),
+                &exp.type_of(),
+            )),
         }
     }
 

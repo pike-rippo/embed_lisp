@@ -78,6 +78,9 @@ pub enum SyntaxError {
     #[error("unexpected form: {0}")]
     UnexpectedForm(String),
 
+    #[error("expected {0}, but the received '{1}' is {2}")]
+    ExpectedBut(String, String, String),
+
     #[error("'{0}' has not such method: '{1}'")]
     NoSuchMethod(String, String),
 }
@@ -120,6 +123,10 @@ impl SyntaxError {
 
     pub fn unexpected_form(name: &str) -> Error {
         SyntaxError::UnexpectedForm(name.to_string()).into()
+    }
+
+    pub fn expected_but(name: &str, received: &str, typ: &str) -> Error {
+        SyntaxError::ExpectedBut(name.to_string(), received.to_string(), typ.to_string()).into()
     }
 
     pub fn no_such_method(name: &str, method: &str) -> Error {
