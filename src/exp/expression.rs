@@ -131,7 +131,7 @@ impl std::fmt::Display for Exp {
             Self::Nil => "Nil".to_string(),
             Self::Number(n) => n.to_string(),
             Self::Bool(b) => b.to_string(),
-            Exp::String(s) => s.clone(),
+            Exp::String(s) => format!("\"{}\"", s),
             Self::List(list) => {
                 if let Some(Exp::Symbol(s)) = list.first() {
                     let xs: Vec<_> = list[1..].iter().map(|x| x.to_string()).collect();
