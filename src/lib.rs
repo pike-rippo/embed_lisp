@@ -29,6 +29,7 @@ pub static GENESYM_COUNTER: AtomicUsize = AtomicUsize::new(0);
 pub use error::{Error, SyntaxError};
 pub use evaluator::{Evaluator, SpecialFormFn};
 pub use exp::{Callable, Exp, PrimitiveFunction};
+pub use flow::EvalFlow;
 pub use native_registry::NativeCreator;
 
 use crate::{
