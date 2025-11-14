@@ -24,6 +24,10 @@ fn print_impl(args: &[Exp], _: &SharedEnv, _: &Evaluator) -> EvalResult {
 }
 
 fn println_impl(args: &[Exp], _: &SharedEnv, _: &Evaluator) -> EvalResult {
+    if args.is_empty() {
+        println!();
+        return Ok(Exp::Nil.value_flow());
+    }
     if args.len() != 1 {
         return Err(SyntaxError::invalid_args_size("println", 1, args.len()));
     }

@@ -38,9 +38,14 @@ fn cond_impl(args: &[Exp], env: &SharedEnv, eval: &Evaluator) -> EvalResult {
         }
 
         let condition = &items[0];
+        let body = &items[1..];
 
-        if let EvalFlow::Value(Exp::Bool(true)) = eval.eval(condition, env)? {
-            return begin_impl(args, env, eval);
+        let r = eval.eval(condition, env)?;
+        if r.try_unwrap()?.is_truthy() {
+            if body.is_empty() {
+                return Ok(r);
+            }
+            return begin_impl(body, env, eval);
         }
     }
     Ok(Exp::Nil.value_flow())
